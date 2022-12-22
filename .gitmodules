@@ -1,0 +1,3 @@
+[submodule "hexowl/tinygo"]
+	path = hexowl/tinygo
+	url = https://github.com/DECE2183/hard-hexowl-tinygo.git
