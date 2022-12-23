@@ -31,11 +31,19 @@ add_custom_command(OUTPUT "${HEXOWL_BINPATH}/.exists" DEPENDS ${TINYGO_ROOT}
     COMMAND touch "${HEXOWL_BINPATH}/.exists")
 
 # build hexowl
-set(HEXOWL_OBJNAME hexowl.o)
-add_custom_command(OUTPUT ${HEXOWL_OBJNAME} DEPENDS "${HEXOWL_BINPATH}/.exists"
+set(HEXOWL_OBJNAME hexowl.o goesp.o gostack.o)
+add_custom_command(OUTPUT hexowl.o DEPENDS "${HEXOWL_BINPATH}/.exists"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/hexowl/sources"
     COMMAND ${CMAKE_COMMAND} -E env TINYGOROOT=${TINYGO_ROOT}
-    tinygo build -target=esp32-lib -o "${HEXOWL_BINPATH}/${HEXOWL_OBJNAME}"
+    tinygo build -target=esp32-lib -o "${HEXOWL_BINPATH}/hexowl.o"
+    COMMENT "Building hexowl library")
+add_custom_command(OUTPUT goesp.o DEPENDS "${HEXOWL_BINPATH}/.exists"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/hexowl/sources"
+    COMMAND xtensa-esp32-elf-gcc -c -o "${HEXOWL_BINPATH}/goesp.o" "${TINYGO_ROOT}/src/device/esp/esp32lib.S"
+    COMMENT "Building hexowl library")
+add_custom_command(OUTPUT gostack.o DEPENDS "${HEXOWL_BINPATH}/.exists"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/hexowl/sources"
+    COMMAND xtensa-esp32-elf-gcc -c -o "${HEXOWL_BINPATH}/gostack.o" "${TINYGO_ROOT}/src/internal/task/task_stack_esp32.S"
     COMMENT "Building hexowl library")
 
 # create static library

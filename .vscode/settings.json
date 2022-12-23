@@ -1,0 +1,4 @@
+{
+    "idf.adapterTargetName": "esp32",
+    "idf.espIdfPathWin": "${env:IDF_PATH}"
+}

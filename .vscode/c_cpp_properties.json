@@ -1,0 +1,64 @@
+{
+    "configurations": [
+        {
+            "name": "esp32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/build/config",
+                "${env:IDF_PATH}/components/**",
+                "${env:IDF_PATH}/components/freertos/include/esp_additions",
+                "${env:IDF_PATH}/components/freertos/include/esp_additions/freertos",
+                "${env:IDF_PATH}/components/freertos/include/freertos",
+                "${env:IDF_PATH}/components/freertos/port/xtensa/include",
+                "${env:IDF_PATH}/components/esp_common/include",
+                "${env:IDF_PATH}/components/xtensa/include",
+                "${env:IDF_PATH}/components/xtensa/esp32/include",
+                "${env:IDF_PATH}/components/esp_rom/include",
+                "${env:IDF_PATH}/components/soc/include",
+                "${env:IDF_PATH}/components/soc/esp32/include",
+                "${env:IDF_PATH}/components/esp_hw_support/include",
+                "${env:IDF_PATH}/components/hal/include",
+                "${env:IDF_PATH}/components/hal/esp32/include",
+                "${env:IDF_PATH}/components/esp_system/include",
+                "${env:IDF_PATH}/components/esp_timer/include",
+                "${env:IDF_PATH}/components/newlib/platform_include",
+                "${env:IDF_PATH}/components/driver/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64",
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**",
+                    "${workspaceFolder}/build/config",
+                    "${env:IDF_PATH}/components/**",
+                    "${env:IDF_PATH}/components/freertos/include/esp_additions",
+                    "${env:IDF_PATH}/components/freertos/include/esp_additions/freertos",
+                    "${env:IDF_PATH}/components/freertos/include/freertos",
+                    "${env:IDF_PATH}/components/freertos/port/xtensa/include",
+                    "${env:IDF_PATH}/components/esp_common/include",
+                    "${env:IDF_PATH}/components/xtensa/include",
+                    "${env:IDF_PATH}/components/xtensa/esp32/include",
+                    "${env:IDF_PATH}/components/esp_rom/include",
+                    "${env:IDF_PATH}/components/soc/include",
+                    "${env:IDF_PATH}/components/soc/esp32/include",
+                    "${env:IDF_PATH}/components/esp_hw_support/include",
+                    "${env:IDF_PATH}/components/hal/include",
+                    "${env:IDF_PATH}/components/hal/esp32/include",
+                    "${env:IDF_PATH}/components/esp_system/include",
+                    "${env:IDF_PATH}/components/esp_timer/include",
+                    "${env:IDF_PATH}/components/newlib/platform_include",
+                    "${env:IDF_PATH}/components/driver/include"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
