@@ -1,3 +1,6 @@
 [submodule "hexowl/tinygo"]
 	path = hexowl/tinygo
 	url = https://github.com/DECE2183/hard-hexowl-tinygo.git
+[submodule "main/display/ssd1322"]
+	path = main/display/ssd1322
+	url = https://github.com/DECE2183/esp32-ssd1322-driver.git

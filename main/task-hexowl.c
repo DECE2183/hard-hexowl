@@ -7,7 +7,7 @@
 
 extern void gorun(uintptr_t);
 
-void hexowl_task_handler(void *arg)
+void hexowl_task(void *arg)
 {
     uintptr_t go_heap_size = (uintptr_t)arg;
     gorun(go_heap_size);
@@ -15,4 +15,9 @@ void hexowl_task_handler(void *arg)
     HexocalcInit();
 
     printf("Hexowl task initialized\r\n");
+
+    while (1)
+    {
+        vTaskDelay(15);
+    }
 }
