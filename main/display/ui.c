@@ -6,11 +6,12 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 
+#include <keyboard.h>
+
 #include "screens/screen.h"
 #include "ssd1322/ssd1322.h"
 #include "bitmaps/hexowl_logo.h"
 
-static ssd1322_t *display;
 static const int res_x = 256, res_y = 64;
 static const ssd1322_pinmap_t pinmap = {
     .reset = 22,
@@ -29,7 +30,9 @@ static const spi_bus_config_t spi_bus_cfg = {
     .flags = SPICOMMON_BUSFLAG_MASTER,
 };
 
+ssd1322_t *ui_display;
 SemaphoreHandle_t ui_refresh_sem;
+
 static const ui_screen_t *current_screen;
 
 void ui_task(void *arg)
@@ -43,8 +46,8 @@ void ui_task(void *arg)
         goto error;
     }
 
-    display = ssd1322_init(spi_host, pinmap, res_x, res_y);
-    if (display == NULL)
+    ui_display = ssd1322_init(spi_host, pinmap, res_x, res_y);
+    if (ui_display == NULL)
     {
         ESP_LOGE("disp", "display initialization error");
         goto error;
@@ -60,31 +63,45 @@ void ui_task(void *arg)
     // intialize screens
     for (int i = 0; i < ui_screens_count; ++i)
     {
-        if (!ui_screens[i]->init(display))
+        if (!ui_screens[i]->init())
         {
             ESP_LOGE("disp", "screen %d initialization error", i);
             goto error;
         }
     }
 
-    ssd1322_draw_bitmap_4bit(display, 0, 0, hexowl_logo_map, hexowl_logo_size_x, hexowl_logo_size_y);
-    ssd1322_send_framebuffer(display);
+    ssd1322_draw_bitmap_4bit(ui_display, 0, 0, hexowl_logo_map, hexowl_logo_size_x, hexowl_logo_size_y);
+    ssd1322_send_framebuffer(ui_display);
 
-    // open first screen
-    vTaskDelay(100);
-    current_screen = ui_screens[0];
+    // open first or test screen
+    vTaskDelay(500);
+    if (keyboard_is_key_pressed(KEY_TILDA))
+    {
+        current_screen = ui_screens[SCREEN_TEST];
+    }
+    else
+    {
+        current_screen = ui_screens[0];
+    }
     current_screen->open();
-    ssd1322_send_framebuffer(display);
+    ssd1322_send_framebuffer(ui_display);
 
     while (1)
     {
         if (xSemaphoreTake(ui_refresh_sem, 250))
         {
             current_screen->draw();
-            ssd1322_send_framebuffer(display);
+            ssd1322_send_framebuffer(ui_display);
         }
     }
 
 error:
     while (1) vTaskDelay(1000);
+}
+
+void ui_change_screen(ui_screen_num_t screen)
+{
+    current_screen->close();
+    current_screen = ui_screens[screen];
+    current_screen->open();
 }

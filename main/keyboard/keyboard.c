@@ -29,20 +29,86 @@ static const i2c_config_t i2c_cfg = {
     .master.clk_speed = 400000,
 };
 
+static const char key_to_char_table[KEY_COUNT][2] = {
+    [KEY_1] = {'1', '!'},
+    [KEY_2] = {'2', '@'},
+    [KEY_3] = {'3', '#'},
+    [KEY_4] = {'4', '$'},
+    [KEY_5] = {'5', '%'},
+    [KEY_6] = {'6', '^'},
+    [KEY_7] = {'7', '&'},
+    [KEY_8] = {'8', '*'},
+    [KEY_9] = {'9', '('},
+    [KEY_0] = {'0', ')'},
+    [KEY_MINUS] = {'-', '_'},
+    [KEY_EQUALS] = {'=', '+'},
+    [KEY_BACKSPACE] = {8, 8},
+    [KEY_Q] = {'q', 'Q'},
+    [KEY_W] = {'w', 'W'},
+    [KEY_E] = {'e', 'E'},
+    [KEY_R] = {'r', 'R'},
+    [KEY_T] = {'t', 'T'},
+    [KEY_Y] = {'y', 'Y'},
+    [KEY_U] = {'u', 'U'},
+    [KEY_I] = {'i', 'I'},
+    [KEY_O] = {'o', 'O'},
+    [KEY_P] = {'p', 'P'},
+    [KEY_BRACKET_LEFT] = {'[', '{'},
+    [KEY_BRACKET_RIGHT] = {']', '}'},
+    [KEY_BACKSLASH] = {'\\', '|'},
+    [KEY_A] = {'a', 'A'},
+    [KEY_S] = {'s', 'S'},
+    [KEY_D] = {'d', 'D'},
+    [KEY_F] = {'f', 'F'},
+    [KEY_G] = {'g', 'G'},
+    [KEY_H] = {'h', 'H'},
+    [KEY_J] = {'j', 'J'},
+    [KEY_K] = {'k', 'K'},
+    [KEY_L] = {'l', 'L'},
+    [KEY_SEMICOLON] = {';', ':'},
+    [KEY_QUOTES] = {'\'', '\"'},
+    [KEY_ENTER] = {'\n', '\n'},
+    [KEY_LSHIFT] = {15, 15},
+    [KEY_Z] = {'z', 'Z'},
+    [KEY_X] = {'x', 'X'},
+    [KEY_C] = {'c', 'C'},
+    [KEY_V] = {'v', 'V'},
+    [KEY_B] = {'b', 'B'},
+    [KEY_N] = {'n', 'N'},
+    [KEY_M] = {'m', 'M'},
+    [KEY_ARROW_COMMA] = {',', '<'},
+    [KEY_ARROW_DOT] = {'.', '>'},
+    [KEY_SLASH] = {'/', '?'},
+    [KEY_TILDA] = {'`', '~'},
+    [KEY_RSHIFT] = {15, 15},
+    [KEY_CTRL] = {'\0', '\0'},
+    [KEY_ALT] = {'\0', '\0'},
+    [KEY_SPACE] = {' ', ' '},
+    [KEY_ARROW_LEFT] = {'\0', '\0'},
+    [KEY_ARROW_UP] = {'\0', '\0'},
+    [KEY_ARROW_DOWN] = {'\0', '\0'},
+    [KEY_ARROW_RIGHT] = {'\0', '\0'}
+};
+
 static uint8_t keys[KEY_COUNT] = {0};
 static kbrd_key_clbk_t callbacks[KEY_COUNT] = {0};
 
 static void scan(void);
 
-void keyboard_register_callback(kbrd_key_t key, kbrd_key_state_t state, kbrd_callback_t clbk)
+inline void keyboard_register_callback(kbrd_key_t key, kbrd_key_state_t state, kbrd_callback_t clbk)
 {
     callbacks[key][state] = clbk;
 }
 
-bool keyboard_is_key_pressed(kbrd_key_t key)
+inline bool keyboard_is_key_pressed(kbrd_key_t key)
 {
     if (key >= sizeof(keys)) return false;
     return keys[key];
+}
+
+inline char keyboard_key_to_char(kbrd_key_t key, bool shifted)
+{
+    return key_to_char_table[key][shifted];
 }
 
 void keyboard_task(void *arg)

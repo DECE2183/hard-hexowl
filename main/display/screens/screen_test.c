@@ -5,17 +5,17 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
+#include <freertos/queue.h>
 
 #include <keyboard.h>
 #include <sensors.h>
 
 #include "../ssd1322/ssd1322.h"
 #include "../ssd1322/ssd1322_font.h"
-#include "../bitmaps/hexowl_logo.h"
 #include "../fonts/cascadia_font.h"
 
 extern SemaphoreHandle_t ui_refresh_sem;
-static ssd1322_t *display;
+extern ssd1322_t *ui_display;
 
 typedef struct {
     int pos_x;
@@ -24,7 +24,13 @@ typedef struct {
     int size_y;
 } key_visual_t;
 
+typedef struct {
+    kbrd_key_t key;
+    bool pressed;
+} key_status_t;
+
 static key_visual_t keyboard_layout[KEY_COUNT];
+static QueueHandle_t keyboard_queue;
 static void key_toggle_callback(kbrd_key_t k, kbrd_key_state_t s, bool pressed);
 static void create_keyboard_layout();
 static void draw_keyboard_layout();
@@ -34,7 +40,7 @@ static char chrg_text_buffer[16];
 static void sensor_vbat_callback(sens_t sensor, float value);
 static void sensor_chrg_callback(sens_t sensor, float value);
 
-static bool init(void *arg);
+static bool init(void);
 static void open(void);
 static void draw(void);
 static void close(void);
@@ -46,22 +52,22 @@ const ui_screen_t test_screen = {
     .close = close
 };
 
-static bool init(void *arg)
+static bool init(void)
 {
-    display = (ssd1322_t *)arg;
+    keyboard_queue = xQueueCreate(16, sizeof(key_status_t));
     create_keyboard_layout();
     return true;
 }
 
 static void open(void)
 {
-    // clear screen and draw initial info
-    ssd1322_fill(display, 0);
+    // clear screen and draw initial layout
+    ssd1322_fill(ui_display, 0);
     draw_keyboard_layout();
 
-    ssd1322_draw_string(display, 168, 4, "VBat:", &cascadia_font);
+    ssd1322_draw_string(ui_display, 168, 4, "VBat:", cascadia_font);
     sensor_vbat_callback(SENS_VBAT, sensors_get_value(SENS_VBAT));
-    ssd1322_draw_string(display, 168, 20, "Chrg:", &cascadia_font);
+    ssd1322_draw_string(ui_display, 168, 20, "Chrg:", cascadia_font);
     sensor_chrg_callback(SENS_CHRG, sensors_get_value(SENS_CHRG));
 
     // register sensors callbacks
@@ -77,21 +83,41 @@ static void open(void)
 
 static void draw(void)
 {
+    static key_status_t k;
+    static key_visual_t *v;
 
+    while (xQueueReceive(keyboard_queue, &k, 0))
+    {
+        v = &keyboard_layout[k.key];
+
+        if (k.pressed)
+            ssd1322_draw_rect_filled(ui_display, v->pos_x + 1, v->pos_y + 1, v->size_x - 2, v->size_y - 2, 8);
+        else
+            ssd1322_draw_rect_filled(ui_display, v->pos_x + 1, v->pos_y + 1, v->size_x - 2, v->size_y - 2, 0);
+    }
 }
 
 static void close(void)
 {
+    // unregister sensors callbacks
+    sensors_register_callback(SENS_VBAT, NULL);
+    sensors_register_callback(SENS_CHRG, NULL);
 
+    // unregister keyboard callbacks
+    for (int i = 0; i < KEY_COUNT; ++i)
+    {
+        keyboard_register_callback(i, KEY_TOGGLED, NULL);
+    }
 }
 
 static void key_toggle_callback(kbrd_key_t k, kbrd_key_state_t s, bool pressed)
 {
-    if (pressed)
-        ssd1322_draw_rect_filled(display, keyboard_layout[k].pos_x + 1, keyboard_layout[k].pos_y + 1, keyboard_layout[k].size_x - 2, keyboard_layout[k].size_y - 2, 8);
-    else
-        ssd1322_draw_rect_filled(display, keyboard_layout[k].pos_x + 1, keyboard_layout[k].pos_y + 1, keyboard_layout[k].size_x - 2, keyboard_layout[k].size_y - 2, 0);
+    static key_status_t _k;
+    
+    _k.key = k;
+    _k.pressed = pressed;
 
+    xQueueSend(keyboard_queue, &_k, 0);
     xSemaphoreGive(ui_refresh_sem);
 }
 
@@ -180,20 +206,20 @@ static void draw_keyboard_layout()
 {
     for (int i = 0; i < KEY_COUNT; ++i)
     {
-        ssd1322_draw_rect(display, keyboard_layout[i].pos_x, keyboard_layout[i].pos_y, keyboard_layout[i].size_x, keyboard_layout[i].size_y, 15);
+        ssd1322_draw_rect(ui_display, keyboard_layout[i].pos_x, keyboard_layout[i].pos_y, keyboard_layout[i].size_x, keyboard_layout[i].size_y, 15);
     }
 }
 
 static void sensor_vbat_callback(sens_t sensor, float value)
 {
     sprintf(vbat_text_buffer, "%.02f", value);
-    ssd1322_draw_string(display, 216, 4, vbat_text_buffer, &cascadia_font);
+    ssd1322_draw_string(ui_display, 216, 4, vbat_text_buffer, cascadia_font);
     xSemaphoreGive(ui_refresh_sem);
 }
 
 static void sensor_chrg_callback(sens_t sensor, float value)
 {
     sprintf(chrg_text_buffer, "%.02f", value);
-    ssd1322_draw_string(display, 216, 20, chrg_text_buffer, &cascadia_font);
+    ssd1322_draw_string(ui_display, 216, 20, chrg_text_buffer, cascadia_font);
     xSemaphoreGive(ui_refresh_sem);
 }

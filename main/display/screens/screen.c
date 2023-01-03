@@ -1,8 +1,10 @@
 #include "screen.h"
 
+extern const ui_screen_t calc_screen;
 extern const ui_screen_t test_screen;
 
 const ui_screen_t *const ui_screens[] = {
+    [SCREEN_CALCULATION] = &calc_screen,
     [SCREEN_TEST] = &test_screen,
 };
 

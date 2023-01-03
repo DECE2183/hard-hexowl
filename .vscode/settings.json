@@ -2,7 +2,7 @@
     "idf.adapterTargetName": "esp32",
     "idf.espIdfPathWin": "${env:IDF_PATH}",
     "idf.flashType": "UART",
-    "idf.portWin": "COM6",
+    "idf.portWin": "COM3",
     "files.associations": {
         "cmath": "c",
         "complex": "c",
