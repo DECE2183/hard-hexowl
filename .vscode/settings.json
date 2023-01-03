@@ -8,5 +8,6 @@
         "complex": "c",
         "cstdlib": "c",
         "xlocnum": "c"
-    }
+    },
+    "cmake.configureOnOpen": false
 }
