@@ -1,7 +1,7 @@
 file(GLOB_RECURSE sources *.c)
 message("Build sources: ${sources}")
 
-set(includes "." "display" "keyboard")
+set(includes "." "display" "keyboard" "sensors")
 
 idf_component_register(SRCS  ${sources}
                     INCLUDE_DIRS ${includes})

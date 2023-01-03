@@ -6,6 +6,7 @@
 
 #include <ui.h>
 #include <keyboard.h>
+#include <sensors.h>
 
 // hexowl task stuff
 extern void hexowl_task(void *arg);
@@ -17,14 +18,20 @@ StackType_t *hexowl_static_stack;
 // ui task stuff
 #define UI_STACK_SIZE 2048
 const uintptr_t ui_stack_size = UI_STACK_SIZE;
-StaticTask_t ui_static_task;
 StackType_t ui_static_stack[UI_STACK_SIZE];
+StaticTask_t ui_static_task;
 
 // keyboard task stuff
 #define KBRD_STACK_SIZE 2048
 const uintptr_t keyboard_stack_size = KBRD_STACK_SIZE;
-StaticTask_t keyboard_static_task;
 StackType_t keyboard_static_stack[KBRD_STACK_SIZE];
+StaticTask_t keyboard_static_task;
+
+// sensors task stuff
+#define SENS_STACK_SIZE 2048
+const uintptr_t sensors_stack_size = SENS_STACK_SIZE;
+StackType_t sensors_static_stack[SENS_STACK_SIZE];
+StaticTask_t sensors_static_task;
 
 void app_main(void)
 {
@@ -52,6 +59,16 @@ void app_main(void)
             0, keyboard_static_stack, &keyboard_static_task))
     {
         ESP_LOGE("main", "unable to run the keyboard task\r\n");
+        goto error;
+    }
+
+    // run sensors task
+    if (!xTaskCreateStatic(
+            sensors_task, "sensors",
+            sensors_stack_size, NULL,
+            0, sensors_static_stack, &sensors_static_task))
+    {
+        ESP_LOGE("main", "unable to run the sensors task\r\n");
         goto error;
     }
 

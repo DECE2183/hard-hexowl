@@ -3,11 +3,15 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 
 #include "pcf8575/pcf8575.h"
 
 #define ROWS_CNT 8
 #define CLMN_CNT 8
+#define KEYBOARD_SCAN_RATE 1
+
+typedef kbrd_callback_t kbrd_key_clbk_t[KEY_STATE_COUNT];
 
 static pcf8575_t *gpio_expander;
 static const uint8_t address = 0x20;
@@ -25,11 +29,17 @@ static const i2c_config_t i2c_cfg = {
     .master.clk_speed = 400000,
 };
 
-static uint8_t keys[58] = {0};
+static uint8_t keys[KEY_COUNT] = {0};
+static kbrd_key_clbk_t callbacks[KEY_COUNT] = {0};
 
 static void scan(void);
 
-bool keyboard_is_key_pressed(kbrd_keys_t key)
+void keyboard_register_callback(kbrd_key_t key, kbrd_key_state_t state, kbrd_callback_t clbk)
+{
+    callbacks[key][state] = clbk;
+}
+
+bool keyboard_is_key_pressed(kbrd_key_t key)
 {
     if (key >= sizeof(keys)) return false;
     return keys[key];
@@ -63,7 +73,7 @@ void keyboard_task(void *arg)
     while (1)
     {
         scan();
-        vTaskDelay(1);
+        vTaskDelay(KEYBOARD_SCAN_RATE);
     }
 
 error:
@@ -74,8 +84,10 @@ static void scan(void)
 {
     uint16_t clmn_selector = 0;
     uint16_t port_value = 0;
-    uint16_t key;
-    
+
+    uint8_t key;
+    uint8_t key_val;
+
     for (int clmn = 0; clmn < CLMN_CNT; ++clmn)
     {
         clmn_selector = 0x100 << clmn;
@@ -84,13 +96,24 @@ static void scan(void)
         port_value = pcf8575_read(gpio_expander);
         for (int row = 0; row < ROWS_CNT; ++row)
         {
-            key = row * CLMN_CNT + clmn;
+            key = row * CLMN_CNT + (clmn < 6 ? clmn : 6 + (7 - clmn));
             if (key >= sizeof(keys)) break;
 
-            keys[key] = !(port_value & 0x01);
-            if (keys[key])
-                ESP_LOGI("kbrd", "key %d pressed", key);
+            key_val = !(port_value & 0x01);
 
+            // execute callbacks
+            if (key_val != keys[key])
+            {
+                if (key_val && callbacks[key][KEY_PRESSED] != NULL)
+                    callbacks[key][KEY_PRESSED](key, KEY_PRESSED, key_val);
+                else if (!key_val && callbacks[key][KEY_RELEASED] != NULL)
+                    callbacks[key][KEY_RELEASED](key, KEY_RELEASED, key_val);
+                    
+                if (callbacks[key][KEY_TOGGLED] != NULL)
+                    callbacks[key][KEY_TOGGLED](key, KEY_TOGGLED, key_val);
+            }
+
+            keys[key] = key_val;
             port_value >>= 1;
         }
 
