@@ -16,6 +16,7 @@
 #include "../fonts/cascadia_font.h"
 
 #define OUTPUT_BUFFER_LEN (1024 * 16)
+#define OUTPUT_BUFFER_SCROLL_STEP (4)
 #define INPUT_BUFFER_LEN (1024)
 
 extern SemaphoreHandle_t ui_refresh_sem;
@@ -23,7 +24,10 @@ extern ssd1322_t *ui_display;
 
 static char output_buffer[OUTPUT_BUFFER_LEN];
 static int output_buffer_len = 0;
+static int output_buffer_lines_cnt = 0;
 static char *output_line_begin = &output_buffer[0];
+static int output_buffer_scroll = 0;
+
 static char input_buffer[INPUT_BUFFER_LEN];
 static int input_buffer_len = 0;
 static int input_cursor = 0;
@@ -61,8 +65,11 @@ static void open(void)
 
     // register keyboard callbacks
     register_text_key_callbacks(KEY_PRESSED, text_key_pressed_callback);
+    register_text_key_callbacks(KEY_DOWN, text_key_pressed_callback);
     register_navigation_key_callbacks(KEY_PRESSED, navigation_key_pressed_callback);
+    register_navigation_key_callbacks(KEY_DOWN, navigation_key_pressed_callback);
     keyboard_register_callback(KEY_BACKSPACE, KEY_PRESSED, backspace_key_pressed_callback);
+    keyboard_register_callback(KEY_BACKSPACE, KEY_DOWN, backspace_key_pressed_callback);
     keyboard_register_callback(KEY_ENTER, KEY_PRESSED, enter_key_pressed_callback);
 
     xSemaphoreGive(ui_refresh_sem);
@@ -74,13 +81,16 @@ static void draw(void)
     static int out_y = 0;
     static char *out_nl = NULL;
 
+    // clear output field
+    ssd1322_draw_rect_filled(ui_display, 0, 0, ui_display->res_x, ui_display->res_y - 16, 0);
+
     // draw output
     out_y = 4;
     out_nl = output_line_begin;
-    while (out_y < ui_display->res_y - 14)
+    while (out_y - output_buffer_scroll < ui_display->res_y - 14)
     {
-        ssd1322_draw_string(ui_display, 4, out_y, out_nl, cascadia_font);
-        
+        ssd1322_draw_string(ui_display, 4, out_y - output_buffer_scroll, out_nl, cascadia_font);
+
         out_nl = strchr(out_nl, '\n');
         if (out_nl == NULL)
             break;
@@ -121,8 +131,11 @@ static void close(void)
 {
     // unregister keyboard callbacks
     register_text_key_callbacks(KEY_PRESSED, NULL);
+    register_text_key_callbacks(KEY_DOWN, NULL);
     register_navigation_key_callbacks(KEY_PRESSED, NULL);
+    register_navigation_key_callbacks(KEY_DOWN, NULL);
     keyboard_register_callback(KEY_BACKSPACE, KEY_PRESSED, NULL);
+    keyboard_register_callback(KEY_BACKSPACE, KEY_DOWN, NULL);
     keyboard_register_callback(KEY_ENTER, KEY_PRESSED, NULL);
 }
 
@@ -144,6 +157,8 @@ static void register_navigation_key_callbacks(kbrd_key_state_t state, kbrd_callb
 {
     keyboard_register_callback(KEY_ARROW_LEFT, state, callback);
     keyboard_register_callback(KEY_ARROW_RIGHT, state, callback);
+    keyboard_register_callback(KEY_ARROW_UP, state, callback);
+    keyboard_register_callback(KEY_ARROW_DOWN, state, callback);
 }
 
 static void text_key_pressed_callback(kbrd_key_t k, kbrd_key_state_t s, bool pressed)
@@ -188,6 +203,16 @@ static void navigation_key_pressed_callback(kbrd_key_t k, kbrd_key_state_t s, bo
         case KEY_ARROW_RIGHT:
             ++input_cursor;
             break;
+        case KEY_ARROW_UP:
+            output_buffer_scroll -= OUTPUT_BUFFER_SCROLL_STEP;
+            if (output_buffer_scroll < 0)
+                output_buffer_scroll = 0;
+            break;
+        case KEY_ARROW_DOWN:
+            output_buffer_scroll += OUTPUT_BUFFER_SCROLL_STEP;
+            if (output_buffer_scroll > output_buffer_lines_cnt*12 - 12)
+                output_buffer_scroll = output_buffer_lines_cnt*12 - 12;
+            break;
         default:
             break;
         }
@@ -229,6 +254,7 @@ static void enter_key_pressed_callback(kbrd_key_t k, kbrd_key_state_t s, bool pr
     memcpy(&output_buffer[output_buffer_len], input_buffer, input_buffer_len);
     output_buffer_len += input_buffer_len+1;
     output_buffer[output_buffer_len-1] = '\n';
+    output_buffer_lines_cnt += 1;
 
     input_cursor = 0;
     input_buffer_len = 0;

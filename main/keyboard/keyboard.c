@@ -9,7 +9,8 @@
 
 #define ROWS_CNT 8
 #define CLMN_CNT 8
-#define KEYBOARD_SCAN_RATE 1
+#define KEYBOARD_SCAN_RATE 10
+#define KEYBOARD_HOLD_COUNT 25
 
 typedef kbrd_callback_t kbrd_key_clbk_t[KEY_STATE_COUNT];
 
@@ -103,7 +104,7 @@ inline void keyboard_register_callback(kbrd_key_t key, kbrd_key_state_t state, k
 inline bool keyboard_is_key_pressed(kbrd_key_t key)
 {
     if (key >= sizeof(keys)) return false;
-    return keys[key];
+    return keys[key] > 0;
 }
 
 inline char keyboard_key_to_char(kbrd_key_t key, bool shifted)
@@ -168,7 +169,7 @@ static void scan(void)
             key_val = !(port_value & 0x01);
 
             // execute callbacks
-            if (key_val != keys[key])
+            if (key_val != (keys[key] > 0))
             {
                 if (key_val && callbacks[key][KEY_PRESSED] != NULL)
                     callbacks[key][KEY_PRESSED](key, KEY_PRESSED, key_val);
@@ -178,8 +179,17 @@ static void scan(void)
                 if (callbacks[key][KEY_TOGGLED] != NULL)
                     callbacks[key][KEY_TOGGLED](key, KEY_TOGGLED, key_val);
             }
+            else if (keys[key] >= KEYBOARD_HOLD_COUNT)
+            {
+                if (key_val && callbacks[key][KEY_DOWN] != NULL)
+                    callbacks[key][KEY_DOWN](key, KEY_DOWN, key_val);
+                else if (!key_val && callbacks[key][KEY_UP] != NULL)
+                    callbacks[key][KEY_UP](key, KEY_UP, key_val);
 
-            keys[key] = key_val;
+                keys[key] = KEYBOARD_HOLD_COUNT;
+            }
+
+            keys[key] = (keys[key] + 1) * key_val;
             port_value >>= 1;
         }
 

@@ -68,6 +68,8 @@ typedef enum {
     KEY_RELEASED,
     KEY_PRESSED,
     KEY_TOGGLED,
+    KEY_DOWN,
+    KEY_UP,
     KEY_STATE_COUNT
 } kbrd_key_state_t;
 
