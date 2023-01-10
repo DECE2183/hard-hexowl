@@ -8,12 +8,12 @@
 #include <keyboard.h>
 #include <sensors.h>
 
-// hexowl task stuff
-extern void hexowl_task(void *arg);
-const uintptr_t hexowl_heap_size = 256 * 1024;
-const uintptr_t hexowl_task_stack_size = 2 * 1024 * 1024;
-StaticTask_t hexowl_static_task;
-StackType_t *hexowl_static_stack;
+// calc task stuff
+extern void calc_task(void *arg);
+const uintptr_t calc_heap_size = 256 * 1024;
+const uintptr_t calc_task_stack_size = 2 * 1024 * 1024;
+StaticTask_t calc_static_task;
+StackType_t *calc_stack;
 
 // ui task stuff
 #define UI_STACK_SIZE 2048
@@ -35,20 +35,20 @@ StaticTask_t sensors_static_task;
 
 void app_main(void)
 {
-    // allocate and run hexowl task
-    hexowl_static_stack = heap_caps_malloc(hexowl_task_stack_size, MALLOC_CAP_SPIRAM);
-    if (hexowl_static_stack == NULL)
+    // allocate and run calc task
+    calc_stack = heap_caps_malloc(calc_task_stack_size, MALLOC_CAP_SPIRAM);
+    if (calc_stack == NULL)
     {
-        ESP_LOGE("main", "unable to allocate the hexowl task stack\r\n");
+        ESP_LOGE("main", "unable to allocate the calc task stack\r\n");
         goto error;
     }
 
     if (!xTaskCreateStaticPinnedToCore(
-            hexowl_task, "hexowl",
-            hexowl_task_stack_size, (void *)hexowl_heap_size,
-            0, hexowl_static_stack, &hexowl_static_task, 1))
+            calc_task, "calc",
+            calc_task_stack_size, (void *)calc_heap_size,
+            0, calc_stack, &calc_static_task, 1))
     {
-        ESP_LOGE("main", "unable to run the hexowl task\r\n");
+        ESP_LOGE("main", "unable to run the calc task\r\n");
         goto error;
     }
 

@@ -3,6 +3,8 @@
 typedef enum {
     SENS_VBAT,
     SENS_CHRG,
+    SENS_BAT_LEVEL,
+    SENS_BAT_CHARGING,
     SENS_COUNT
 } sens_t;
 

@@ -9,8 +9,8 @@
 
 #define ROWS_CNT 8
 #define CLMN_CNT 8
-#define KEYBOARD_SCAN_RATE 10
-#define KEYBOARD_HOLD_COUNT 25
+#define KEYBOARD_SCAN_RATE 5
+#define KEYBOARD_HOLD_COUNT 20
 
 typedef kbrd_callback_t kbrd_key_clbk_t[KEY_STATE_COUNT];
 

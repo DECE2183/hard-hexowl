@@ -10,7 +10,8 @@
 
 #include "screens/screen.h"
 #include "ssd1322/ssd1322.h"
-#include "bitmaps/hexowl_logo.h"
+#include "ssd1322/ssd1322_bitmap.h"
+#include "bitmaps/hexowl_logo_full_bmp.h"
 
 static const int res_x = 256, res_y = 64;
 static const ssd1322_pinmap_t pinmap = {
@@ -70,11 +71,11 @@ void ui_task(void *arg)
         }
     }
 
-    ssd1322_draw_bitmap_4bit(ui_display, 0, 0, hexowl_logo_map, hexowl_logo_size_x, hexowl_logo_size_y);
+    ssd1322_draw_bitmap(ui_display, 12, 7, hexowl_logo_full);
     ssd1322_send_framebuffer(ui_display);
 
     // open first or test screen
-    vTaskDelay(500);
+    vTaskDelay(700);
     if (keyboard_is_key_pressed(KEY_TILDA))
     {
         current_screen = ui_screens[SCREEN_TEST];

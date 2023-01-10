@@ -37,8 +37,11 @@ static void draw_keyboard_layout();
 
 static char vbat_text_buffer[16];
 static char chrg_text_buffer[16];
+static char level_text_buffer[16];
 static void sensor_vbat_callback(sens_t sensor, float value);
 static void sensor_chrg_callback(sens_t sensor, float value);
+static void sensor_level_callback(sens_t sensor, float value);
+static void sensor_is_chrg_callback(sens_t sensor, float value);
 
 static bool init(void);
 static void open(void);
@@ -69,10 +72,16 @@ static void open(void)
     sensor_vbat_callback(SENS_VBAT, sensors_get_value(SENS_VBAT));
     ssd1322_draw_string(ui_display, 168, 20, "Chrg:", cascadia_font);
     sensor_chrg_callback(SENS_CHRG, sensors_get_value(SENS_CHRG));
+    ssd1322_draw_string(ui_display, 168, 36, "LVL:", cascadia_font);
+    sensor_level_callback(SENS_BAT_LEVEL, sensors_get_value(SENS_BAT_LEVEL));
+    ssd1322_draw_string(ui_display, 168, 52, "IsCh:", cascadia_font);
+    sensor_is_chrg_callback(SENS_BAT_CHARGING, sensors_get_value(SENS_BAT_CHARGING));
 
     // register sensors callbacks
     sensors_register_callback(SENS_VBAT, sensor_vbat_callback);
     sensors_register_callback(SENS_CHRG, sensor_chrg_callback);
+    sensors_register_callback(SENS_BAT_LEVEL, sensor_level_callback);
+    sensors_register_callback(SENS_BAT_CHARGING, sensor_is_chrg_callback);
 
     // register keyboard callbacks
     for (int i = 0; i < KEY_COUNT; ++i)
@@ -102,6 +111,7 @@ static void close(void)
     // unregister sensors callbacks
     sensors_register_callback(SENS_VBAT, NULL);
     sensors_register_callback(SENS_CHRG, NULL);
+    sensors_register_callback(SENS_BAT_CHARGING, NULL);
 
     // unregister keyboard callbacks
     for (int i = 0; i < KEY_COUNT; ++i)
@@ -213,6 +223,7 @@ static void draw_keyboard_layout()
 static void sensor_vbat_callback(sens_t sensor, float value)
 {
     sprintf(vbat_text_buffer, "%.02f", value);
+    ssd1322_draw_rect_filled(ui_display, 216, 4, 40, 12, 0);
     ssd1322_draw_string(ui_display, 216, 4, vbat_text_buffer, cascadia_font);
     xSemaphoreGive(ui_refresh_sem);
 }
@@ -220,6 +231,27 @@ static void sensor_vbat_callback(sens_t sensor, float value)
 static void sensor_chrg_callback(sens_t sensor, float value)
 {
     sprintf(chrg_text_buffer, "%.02f", value);
+    ssd1322_draw_rect_filled(ui_display, 216, 20, 40, 12, 0);
     ssd1322_draw_string(ui_display, 216, 20, chrg_text_buffer, cascadia_font);
+    xSemaphoreGive(ui_refresh_sem);
+}
+
+static void sensor_level_callback(sens_t sensor, float value)
+{
+    sprintf(level_text_buffer, "%.01f%%", value);
+    ssd1322_draw_rect_filled(ui_display, 216, 36, 40, 12, 0);
+    ssd1322_draw_string(ui_display, 216, 36, level_text_buffer, cascadia_font);
+    xSemaphoreGive(ui_refresh_sem);
+}
+
+static void sensor_is_chrg_callback(sens_t sensor, float value)
+{
+    ssd1322_draw_rect_filled(ui_display, 216, 52, 40, 12, 0);
+
+    if (value > 0)
+        ssd1322_draw_string(ui_display, 216, 52, "YES", cascadia_font);
+    else
+        ssd1322_draw_string(ui_display, 216, 52, "NO", cascadia_font);
+
     xSemaphoreGive(ui_refresh_sem);
 }
