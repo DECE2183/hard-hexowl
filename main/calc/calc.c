@@ -16,11 +16,31 @@
 extern void gorun(uintptr_t);
 
 SemaphoreHandle_t calc_begin_sem;
-SemaphoreHandle_t calc_done_sem;
-SemaphoreHandle_t calc_lock_mux;
+SemaphoreHandle_t calc_in_lock_mux;
 
-static char input_str[INPUT_LEN];
-static char output_str[OUTPUT_LEN];
+SemaphoreHandle_t calc_out_sem;
+SemaphoreHandle_t calc_out_lock_mux;
+
+SemaphoreHandle_t calc_done_sem;
+
+static char input_str[INPUT_LEN+1] = {0};
+static char output_str[OUTPUT_LEN+1] = {0};
+
+static void hx_print_func(GoString str)
+{
+    ESP_LOGI("calc", "output triggered");
+
+    if (xSemaphoreTake(calc_out_lock_mux, LOCK_TIMEOUT))
+    {
+        memset(input_str, 0, INPUT_LEN);
+        memcpy(input_str, str.p, str.n);
+        xSemaphoreGive(calc_out_sem);
+    }
+    else
+    {
+        ESP_LOGW("calc", "output resource lock mutex timeout");
+    }
+}
 
 static char *str_chain_append(char *dest, const char *source, int len)
 {
@@ -35,10 +55,10 @@ static char *str_chain_append(char *dest, const char *source, int len)
 
 static void calc_begin(void)
 {
-    struct CalculatePrompt_return vals;
+    hexowl_calculate_return_t vals;
     char *strend = output_str;
 
-    vals = CalculatePrompt(input_str);
+    vals = HexowlCalculate(input_str);
 
     if (vals.success == 0)
     {
@@ -75,10 +95,12 @@ static void calc_begin(void)
 void calc_task(void *arg)
 {
     calc_begin_sem = xSemaphoreCreateBinary();
+    calc_in_lock_mux = xSemaphoreCreateMutex();
+    calc_out_sem = xSemaphoreCreateBinary();
+    calc_out_lock_mux = xSemaphoreCreateMutex();
     calc_done_sem = xSemaphoreCreateBinary();
-    calc_lock_mux = xSemaphoreCreateMutex();
 
-    if (calc_begin_sem == NULL || calc_done_sem == NULL || calc_lock_mux == NULL)
+    if (calc_begin_sem == NULL || calc_in_lock_mux == NULL || calc_out_sem == NULL || calc_out_lock_mux == NULL || calc_done_sem == NULL)
     {
         ESP_LOGE("calc", "semaphore creation error");
         goto error;
@@ -87,7 +109,7 @@ void calc_task(void *arg)
     uintptr_t go_heap_size = (uintptr_t)arg;
     gorun(go_heap_size);
 
-    HexocalcInit();
+    HexowlInit(hx_print_func, OUTPUT_LEN);
     ESP_LOGI("calc", "hexowl task initialized");
 
     while (1)
@@ -107,14 +129,14 @@ error:
 
 void calc_expression(const char *expr)
 {
-    if (xSemaphoreTake(calc_lock_mux, LOCK_TIMEOUT))
+    if (xSemaphoreTake(calc_in_lock_mux, LOCK_TIMEOUT))
     {
         strcpy(input_str, expr);
         xSemaphoreGive(calc_begin_sem);
     }
     else
     {
-        ESP_LOGW("calc", "resource lock mutex timeout");
+        ESP_LOGW("calc", "input resource lock mutex timeout");
     }
 }
 
@@ -122,12 +144,25 @@ const char *calc_await_expression(void)
 {
     if (xSemaphoreTake(calc_done_sem, portMAX_DELAY))
     {
-        xSemaphoreGive(calc_lock_mux);
+        xSemaphoreGive(calc_in_lock_mux);
         return output_str;
     }
     else
     {
         ESP_LOGE("calc", "expression calculation timeout");
+        return NULL;
+    }
+}
+
+const char *calc_await_output(int timeout)
+{
+    if (xSemaphoreTake(calc_out_sem, timeout))
+    {
+        xSemaphoreGive(calc_out_lock_mux);
+        return output_str;
+    }
+    else
+    {
         return NULL;
     }
 }

@@ -71,6 +71,9 @@ static void proccess_output_navigation(kbrd_key_t k, kbrd_key_state_t s);
 static void draw_battery_level(void);
 static void draw_output_scrollbar(void);
 
+static TaskHandle_t bg_task_handle;
+static void bg_task(void *arg);
+
 static bool init(void);
 static void open(void);
 static void draw(void);
@@ -85,6 +88,10 @@ const ui_screen_t calc_screen = {
 
 static bool init(void)
 {
+    if (!xTaskCreate(bg_task, "disp-bg", 1024, NULL, 0, &bg_task_handle))
+        return false;
+    
+    vTaskSuspend(bg_task_handle);
     return true;
 }
 
@@ -112,6 +119,7 @@ static void open(void)
     last_bat_level = sensors_get_value(SENS_BAT_LEVEL);
     last_bat_is_charge = sensors_get_value(SENS_BAT_CHARGING);
 
+    vTaskResume(bg_task_handle);
     xSemaphoreGive(ui_refresh_sem);
 }
 
@@ -192,6 +200,8 @@ static void close(void)
     // unregister sensors callbacks
     sensors_register_callback(SENS_BAT_LEVEL, NULL);
     sensors_register_callback(SENS_BAT_CHARGING, NULL);
+
+    vTaskSuspend(bg_task_handle);
 }
 
 static void register_text_key_callbacks(kbrd_key_state_t state, kbrd_callback_t callback)
@@ -299,6 +309,8 @@ static void battery_change_callback(sens_t sensor, float value)
 
 static void output_string(const char *str)
 {
+    if (str == NULL) return;
+
     int lines_cnt = 0;
     const char *s;
 
@@ -478,4 +490,12 @@ static void draw_output_scrollbar(void)
     // draw bottom blend line
     if (thumb_bottom_blend > 0 && thumb_size < ui_display->res_y - 19)
         ssd1322_draw_hline(ui_display, ui_display->res_x - 2, ui_display->res_x, 2 + thumb_size, 2 + roundf(6 * thumb_bottom_blend));
+}
+
+static void bg_task(void *arg)
+{
+    while(1)
+    {
+        output_string(calc_await_output(150));
+    }
 }

@@ -31,7 +31,7 @@ add_custom_command(OUTPUT "${HEXOWL_BINPATH}/.exists" DEPENDS ${TINYGO_ROOT}
     COMMAND touch "${HEXOWL_BINPATH}/.exists")
 
 # build hexowl
-set(HEXOWL_OBJNAME hexowl.o goesp.o gostack.o)
+set(HEXOWL_OBJNAME goesp.o gostack.o hexowl.o)
 add_custom_command(OUTPUT hexowl.o DEPENDS "${HEXOWL_BINPATH}/.exists"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/hexowl/sources"
     COMMAND ${CMAKE_COMMAND} -E env TINYGOROOT=${TINYGO_ROOT}

@@ -75,20 +75,22 @@ extern "C" {
 #endif
 
 
-/* Return type for CalculatePrompt */
-struct CalculatePrompt_return {
+/* Return type for HexowlCalculate */
+typedef struct hexowl_calculate_return {
 	GoUint8 success; /* success */
 	GoString decVal; /* decVal */
 	GoString hexVal; /* hexVal */
 	GoString binVal; /* binVal */
 	GoUint32 calcTime;	/* calcTime */
-};
+} hexowl_calculate_return_t;
 
 //go:noinline
-extern struct CalculatePrompt_return CalculatePrompt(const char* input);
+extern hexowl_calculate_return_t HexowlCalculate(const char *input);
+
+typedef void (*hexowl_print_func_t)(GoString str);
 
 //go:noinline
-extern void HexocalcInit();
+extern void HexowlInit(hexowl_print_func_t printfunc, GoInt limit);
 
 //go:noinline
 extern GoUint64 GetFreeMem();

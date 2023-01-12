@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"time"
+	"unsafe"
 
 	"github.com/dece2183/hexowl/builtin"
 	"github.com/dece2183/hexowl/operators"
@@ -12,9 +13,36 @@ import (
 
 import "C"
 
-//export CalculatePrompt
+type displayWriter struct {
+	print      func(str string)
+	printLimit int
+}
+
+var stdOut displayWriter
+
 //go:noinline
-func CalculatePrompt(inputStr *C.char) (success bool, decVal, hexVal, binVal string, calcTime uint32) {
+func (w displayWriter) Write(arr []byte) (n int, err error) {
+	fmt.Println("writing to stdout")
+
+	if w.print == nil || stdOut.printLimit == 0 {
+		fmt.Println("no print function")
+		return 0, fmt.Errorf("print function does not defined")
+	}
+
+	sizeLeft := len(arr)
+	for sizeLeft > w.printLimit {
+		w.print(string(arr[n : n+w.printLimit]))
+		sizeLeft -= w.printLimit
+		n += w.printLimit
+	}
+	w.print(string(arr[n : n+sizeLeft]))
+
+	return n, nil
+}
+
+//export HexowlCalculate
+//go:noinline
+func HexowlCalculate(inputStr *C.char) (success bool, decVal, hexVal, binVal string, calcTime uint32) {
 	input := C.GoString(inputStr)
 
 	calcBeginTime := time.Now()
@@ -55,11 +83,12 @@ func CalculatePrompt(inputStr *C.char) (success bool, decVal, hexVal, binVal str
 	return
 }
 
-//export HexocalcInit
+//export HexowlInit
 //go:noinline
-func HexocalcInit() {
-	builtin.FuncsInit()
-	fmt.Println("Hexocalc initialization complete.")
+func HexowlInit(printfunc uintptr, limit int) {
+	stdOut.print = *(*func(str string))(unsafe.Pointer(printfunc))
+	stdOut.printLimit = limit
+	builtin.FuncsInit(stdOut)
 }
 
 //export GetFreeMem
