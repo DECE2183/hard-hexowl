@@ -19,21 +19,22 @@ SemaphoreHandle_t calc_begin_sem;
 SemaphoreHandle_t calc_in_lock_mux;
 
 SemaphoreHandle_t calc_out_sem;
-SemaphoreHandle_t calc_out_lock_mux;
+SemaphoreHandle_t calc_out_done_sem;
 
 SemaphoreHandle_t calc_done_sem;
 
 static char input_str[INPUT_LEN+1] = {0};
 static char output_str[OUTPUT_LEN+1] = {0};
+static char general_output_str[OUTPUT_LEN+1] = {0};
 
 static void hx_print_func(GoString str)
 {
     ESP_LOGI("calc", "output triggered");
 
-    if (xSemaphoreTake(calc_out_lock_mux, LOCK_TIMEOUT))
+    if (xSemaphoreTake(calc_out_done_sem, LOCK_TIMEOUT))
     {
-        memset(input_str, 0, INPUT_LEN);
-        memcpy(input_str, str.p, str.n);
+        memset(general_output_str, 0, INPUT_LEN);
+        memcpy(general_output_str, str.p, str.n);
         xSemaphoreGive(calc_out_sem);
     }
     else
@@ -97,14 +98,16 @@ void calc_task(void *arg)
     calc_begin_sem = xSemaphoreCreateBinary();
     calc_in_lock_mux = xSemaphoreCreateMutex();
     calc_out_sem = xSemaphoreCreateBinary();
-    calc_out_lock_mux = xSemaphoreCreateMutex();
+    calc_out_done_sem = xSemaphoreCreateBinary();
     calc_done_sem = xSemaphoreCreateBinary();
 
-    if (calc_begin_sem == NULL || calc_in_lock_mux == NULL || calc_out_sem == NULL || calc_out_lock_mux == NULL || calc_done_sem == NULL)
+    if (calc_begin_sem == NULL || calc_in_lock_mux == NULL || calc_out_sem == NULL || calc_out_done_sem == NULL || calc_done_sem == NULL)
     {
         ESP_LOGE("calc", "semaphore creation error");
         goto error;
     }
+
+    xSemaphoreGive(calc_out_done_sem);
 
     uintptr_t go_heap_size = (uintptr_t)arg;
     gorun(go_heap_size);
@@ -158,11 +161,15 @@ const char *calc_await_output(int timeout)
 {
     if (xSemaphoreTake(calc_out_sem, timeout))
     {
-        xSemaphoreGive(calc_out_lock_mux);
-        return output_str;
+        return general_output_str;
     }
     else
     {
         return NULL;
     }
+}
+
+void calc_done_output(void)
+{
+    xSemaphoreGive(calc_out_done_sem);
 }

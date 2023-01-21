@@ -90,7 +90,7 @@ extern hexowl_calculate_return_t HexowlCalculate(const char *input);
 typedef void (*hexowl_print_func_t)(GoString str);
 
 //go:noinline
-extern void HexowlInit(hexowl_print_func_t printfunc, GoInt limit);
+extern void HexowlInit(hexowl_print_func_t printfunc, GoUint32 limit);
 
 //go:noinline
 extern GoUint64 GetFreeMem();

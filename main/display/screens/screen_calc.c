@@ -287,11 +287,10 @@ static void enter_key_released_callback(kbrd_key_t k, kbrd_key_state_t s, bool p
     if (input_history_pos > 0)
         input_take_history();
 
-    sprintf(text_buffer, ">: %s", input_buffer[0].str);
+    sprintf(text_buffer, ">: %s\n", input_buffer[0].str);
     output_string(text_buffer);
     calc_expression(input_buffer[0].str);
     output_string(calc_await_expression());
-    output_buffer_scroll -= 12;
 
     input_push_history();
     xSemaphoreGive(ui_refresh_sem);
@@ -336,11 +335,11 @@ static void output_string(const char *str)
     output_buffer_len += str_len;
 
     // insert last new line symbol if missed
-    if (str[str_len] != '\n')
-    {
-        output_buffer[output_buffer_len++] = '\n';
-        output_buffer_lines_cnt += 1;
-    }
+    // if (str[str_len] != '\n')
+    // {
+    //     output_buffer[output_buffer_len++] = '\n';
+    //     output_buffer_lines_cnt += 1;
+    // }
 
     output_buffer[output_buffer_len] = '\0';
 
@@ -494,8 +493,16 @@ static void draw_output_scrollbar(void)
 
 static void bg_task(void *arg)
 {
+    const char *out_str;
+
     while(1)
     {
-        output_string(calc_await_output(150));
+        out_str = calc_await_output(150);
+        if (out_str)
+        {
+            output_string(out_str);
+            calc_done_output();
+            xSemaphoreGive(ui_refresh_sem);
+        }
     }
 }

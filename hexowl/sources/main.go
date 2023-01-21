@@ -11,10 +11,34 @@ import (
 	"github.com/dece2183/hexowl/utils"
 )
 
+/*
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include <string.h>
+
+typedef struct { const char *p; ptrdiff_t n; } _GoString_;
+typedef void (*print_func_t)(_GoString_ str);
+
+static char buf[512];
+
+void ExtPrint(uintptr_t func, _GoString_ str)
+{
+	print_func_t f = (print_func_t)func;
+	if (f != NULL)
+	{
+		memset(buf, 0, 512);
+		strncpy(buf, str.p, str.n);
+		printf("str: %s\n", buf);
+		f(str);
+	}
+}
+*/
 import "C"
 
 type displayWriter struct {
-	print      func(str string)
+	printFunc  uintptr
 	printLimit int
 }
 
@@ -22,20 +46,27 @@ var stdOut displayWriter
 
 //go:noinline
 func (w displayWriter) Write(arr []byte) (n int, err error) {
-	fmt.Println("writing to stdout")
+	fmt.Printf("writing to stdout: %+v\n", w)
 
-	if w.print == nil || stdOut.printLimit == 0 {
+	if w.printFunc == 0 || w.printLimit == 0 {
 		fmt.Println("no print function")
 		return 0, fmt.Errorf("print function does not defined")
 	}
 
+	var strToPrint string
+
 	sizeLeft := len(arr)
 	for sizeLeft > w.printLimit {
-		w.print(string(arr[n : n+w.printLimit]))
+		strToPrint = string(arr[n : n+w.printLimit])
+		fmt.Printf("to stdout: %s\n", strToPrint)
+		C.ExtPrint(w.printFunc, *(*C._GoString_)(unsafe.Pointer(&strToPrint)))
 		sizeLeft -= w.printLimit
 		n += w.printLimit
 	}
-	w.print(string(arr[n : n+sizeLeft]))
+
+	strToPrint = string(arr[n : n+sizeLeft])
+	fmt.Printf("to stdout: %s\n", strToPrint)
+	C.ExtPrint(w.printFunc, *(*C._GoString_)(unsafe.Pointer(&strToPrint)))
 
 	return n, nil
 }
@@ -85,10 +116,11 @@ func HexowlCalculate(inputStr *C.char) (success bool, decVal, hexVal, binVal str
 
 //export HexowlInit
 //go:noinline
-func HexowlInit(printfunc uintptr, limit int) {
-	stdOut.print = *(*func(str string))(unsafe.Pointer(printfunc))
-	stdOut.printLimit = limit
-	builtin.FuncsInit(stdOut)
+func HexowlInit(printfunc uintptr, limit uint32) {
+	fmt.Printf("print func addr: 0x%x\nlimit: %d\n", printfunc, limit)
+	stdOut.printFunc = printfunc
+	stdOut.printLimit = int(limit)
+	builtin.FuncsInit(&stdOut)
 }
 
 //export GetFreeMem
