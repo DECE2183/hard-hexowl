@@ -3,3 +3,4 @@ build/
 *.o
 *.a
 *.old
+partition_table
