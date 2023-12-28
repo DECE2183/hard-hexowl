@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stddef.h>
+#include <stdbool.h>
+
 #define SDCARD_MOUNT_POINT      "/sdcard"
 #define SDCARD_ENVIRONMENT_DIR  "/hexowl"
 #define SDCARD_MAX_FILE_NAME    (64)

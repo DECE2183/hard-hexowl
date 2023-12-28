@@ -12,11 +12,12 @@
 #include <driver/sdmmc_host.h>
 #include <driver/gpio.h>
 
+#define BASE_PATH_LEN (sizeof(sd_mount_point) + sizeof(sd_env_dir) - 2)
+
 sdmmc_card_t *sd_card = NULL;
 
 static const char sd_mount_point[] = SDCARD_MOUNT_POINT;
 static const char sd_env_dir[] = SDCARD_ENVIRONMENT_DIR;
-static const size_t base_path_len = sizeof(sd_mount_point) + sizeof(sd_env_dir);
 static FILE *file = NULL;
 
 bool sdcard_is_inserted(void)
@@ -94,8 +95,16 @@ sd_err_t sdcard_open(const char *fname, const char *mode)
         return SD_LONG_NAME;
     }
 
-    static char path[base_path_len + SDCARD_MAX_FILE_NAME + 7] = SDCARD_MOUNT_POINT SDCARD_ENVIRONMENT_DIR;
-    snprintf(path + base_path_len, SDCARD_MAX_FILE_NAME, "/%s.json", sd_mount_point, sd_env_dir, fname);
+    static char path[BASE_PATH_LEN + SDCARD_MAX_FILE_NAME + 7] = {SDCARD_MOUNT_POINT SDCARD_ENVIRONMENT_DIR};
+
+    if (strchr(fname, '.') == NULL)
+    {
+        snprintf(path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s.json", fname);
+    }
+    else
+    {
+        snprintf(path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s", fname);
+    }
 
     file = fopen(path, mode);
     if (file == NULL)
@@ -120,7 +129,7 @@ sd_err_t sdcard_close(void)
 
 int sdcard_read(void *outbuf, size_t size)
 {
-    int n = fread(outbuf, size, 1, file);
+    int n = fread(outbuf, 1, size, file);
     if (n < 0)
     {
         return SD_READ_FAIL;
@@ -130,7 +139,7 @@ int sdcard_read(void *outbuf, size_t size)
 
 int sdcard_write(const void *inbuf, size_t size)
 {
-    int n = fwrite(inbuf, size, 1, file);
+    int n = fwrite(inbuf, 1, size, file);
     if (n < 0)
     {
         return SD_WRITE_FAIL;

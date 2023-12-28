@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -35,6 +36,10 @@ StaticTask_t sensors_static_task;
 
 void app_main(void)
 {
+    esp_ota_img_states_t ota_state;
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_get_state_partition(running, &ota_state);
+
     // allocate and run calc task
     calc_stack = heap_caps_malloc(calc_task_stack_size, MALLOC_CAP_SPIRAM);
     if (calc_stack == NULL)
@@ -82,6 +87,13 @@ void app_main(void)
         goto error;
     }
 
+    if (ota_state == ESP_OTA_IMG_PENDING_VERIFY)
+    {
+        // TODO: implement secure firmware validation!!!
+        vTaskDelay(150);
+        esp_ota_mark_app_valid_cancel_rollback();
+    }
+
     // main loop
     while (1)
     {
@@ -89,5 +101,10 @@ void app_main(void)
     }
 
 error:
+    if (ota_state == ESP_OTA_IMG_PENDING_VERIFY)
+    {
+        ESP_LOGE("main", "diagnostics failed! start rollback to the previous version...");
+        esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
     while (1) vTaskDelay(1000);
 }
