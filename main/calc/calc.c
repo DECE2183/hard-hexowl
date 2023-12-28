@@ -1,5 +1,4 @@
 #include "calc.h"
-#include "sdcard/sdcard.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +7,7 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 
+#include <sdcard.h>
 #include <hexowl.h>
 
 #define INPUT_LEN (1024)
@@ -62,7 +62,7 @@ static int hx_fopen_func(GoString name, GoString mode)
     static char fname[256];
     static char fmode[8];
 
-    if (!sdcard_mounted())
+    if (!sdcard_is_mounted())
     {
         err = sdcard_mount();
         if (err != SD_OK)
@@ -93,7 +93,7 @@ static int hx_fclose_func(void)
 
 static int hx_fwrite_func(const void *data, size_t size)
 {
-    if (!sdcard_mounted())
+    if (!sdcard_is_mounted())
     {
         return SD_NOT_INSERTED;
     }
@@ -102,7 +102,7 @@ static int hx_fwrite_func(const void *data, size_t size)
 
 static int hx_fread_func(void *data, size_t size)
 {
-    if (!sdcard_mounted())
+    if (!sdcard_is_mounted())
     {
         return SD_NOT_INSERTED;
     }

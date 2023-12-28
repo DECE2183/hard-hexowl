@@ -1,11 +1,9 @@
 #pragma once
 
-#include <esp_log.h>
-
 #define SDCARD_MOUNT_POINT      "/sdcard"
 #define SDCARD_ENVIRONMENT_DIR  "/hexowl"
 #define SDCARD_MAX_FILE_NAME    (64)
-#define SDCARD_READ_BUF_SIZE    (512)
+#define SDCARD_CD_PIN			(27)
 
 typedef enum {
     SD_OK           = 0,
@@ -18,7 +16,8 @@ typedef enum {
     SD_MKDIR_ERR    = -7,
 } sd_err_t;
 
-bool sdcard_mounted(void);
+bool sdcard_is_inserted(void);
+bool sdcard_is_mounted(void);
 
 sd_err_t sdcard_mount(void);
 sd_err_t sdcard_unmount(void);

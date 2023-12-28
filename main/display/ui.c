@@ -80,6 +80,10 @@ void ui_task(void *arg)
     {
         current_screen = ui_screens[SCREEN_TEST];
     }
+    else if (keyboard_is_key_pressed(KEY_CTRL) && keyboard_is_key_pressed(KEY_ALT) && keyboard_is_key_pressed(KEY_BACKSPACE))
+    {
+        current_screen = ui_screens[SCREEN_UPDATE];
+    }
     else
     {
         current_screen = ui_screens[0];

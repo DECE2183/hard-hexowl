@@ -2,25 +2,41 @@
 
 #include <stdio.h>
 #include <string.h>
+
 #include <sys/unistd.h>
 #include <sys/stat.h>
+
 #include <esp_vfs_fat.h>
+#include <esp_log.h>
 #include <sdmmc_cmd.h>
 #include <driver/sdmmc_host.h>
+#include <driver/gpio.h>
 
 sdmmc_card_t *sd_card = NULL;
 
 static const char sd_mount_point[] = SDCARD_MOUNT_POINT;
 static const char sd_env_dir[] = SDCARD_ENVIRONMENT_DIR;
+static const size_t base_path_len = sizeof(sd_mount_point) + sizeof(sd_env_dir);
 static FILE *file = NULL;
 
-bool sdcard_mounted(void)
+bool sdcard_is_inserted(void)
+{
+    gpio_set_direction(SDCARD_CD_PIN, GPIO_MODE_INPUT);
+    return gpio_get_level(SDCARD_CD_PIN) == 0;
+}
+
+bool sdcard_is_mounted(void)
 {
     return sd_card != NULL;
 }
 
 sd_err_t sdcard_mount(void)
 {
+    if (!sdcard_is_inserted())
+    {
+        return SD_NOT_INSERTED;
+    }
+
     esp_err_t err;
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
 
@@ -78,8 +94,8 @@ sd_err_t sdcard_open(const char *fname, const char *mode)
         return SD_LONG_NAME;
     }
 
-    static char path[sizeof(sd_mount_point) + sizeof(sd_env_dir) + SDCARD_MAX_FILE_NAME + 2];
-    snprintf(path, sizeof(path), "%s%s/%s.json", sd_mount_point, sd_env_dir, fname);
+    static char path[base_path_len + SDCARD_MAX_FILE_NAME + 7] = SDCARD_MOUNT_POINT SDCARD_ENVIRONMENT_DIR;
+    snprintf(path + base_path_len, SDCARD_MAX_FILE_NAME, "/%s.json", sd_mount_point, sd_env_dir, fname);
 
     file = fopen(path, mode);
     if (file == NULL)

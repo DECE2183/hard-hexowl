@@ -11,6 +11,7 @@ typedef struct {
 
 typedef enum {
     SCREEN_CALCULATION,
+    SCREEN_UPDATE,
     SCREEN_TEST,
 } ui_screen_num_t;
 
