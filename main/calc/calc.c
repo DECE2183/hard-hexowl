@@ -1,4 +1,5 @@
 #include "calc.h"
+#include "sdcard/sdcard.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -43,6 +44,71 @@ static void hx_print_func(GoString str)
     }
 }
 
+static void hx_clear_screen_func(void)
+{
+    ESP_LOGI("calc", "clear screen triggered");
+}
+
+static int hx_flist_func(char *str)
+{
+    *str = 0;
+    return 0;
+}
+
+static int hx_fopen_func(GoString name, GoString mode)
+{
+    sd_err_t err;
+
+    static char fname[256];
+    static char fmode[8];
+
+    if (!sdcard_mounted())
+    {
+        err = sdcard_mount();
+        if (err != SD_OK)
+        {
+            return err;
+        }
+    }
+
+    memcpy(fname, name.p, name.n);
+    fname[name.n] = 0;
+
+    memcpy(fmode, mode.p, mode.n);
+    fmode[mode.n] = 0;
+
+    err = sdcard_open(fname, fmode);
+    if (err != SD_OK)
+    {
+        return err;
+    }
+
+    return SD_OK;
+}
+
+static int hx_fclose_func(void)
+{
+    return sdcard_close();
+}
+
+static int hx_fwrite_func(const void *data, size_t size)
+{
+    if (!sdcard_mounted())
+    {
+        return SD_NOT_INSERTED;
+    }
+    return sdcard_write(data, size);
+}
+
+static int hx_fread_func(void *data, size_t size)
+{
+    if (!sdcard_mounted())
+    {
+        return SD_NOT_INSERTED;
+    }
+    return sdcard_read(data, size);
+}
+
 static char *str_chain_append(char *dest, const char *source, int len)
 {
     if (len == 0)
@@ -63,7 +129,7 @@ static void calc_begin(void)
 
     if (vals.success == 0)
     {
-        strend = str_chain_append(strend, "<: error occured: ", 0);
+        strend = str_chain_append(strend, "<: error: ", 0);
         strend = str_chain_append(strend, vals.decVal.p, vals.decVal.n);
     }
     else
@@ -112,7 +178,14 @@ void calc_task(void *arg)
     uintptr_t go_heap_size = (uintptr_t)arg;
     gorun(go_heap_size);
 
-    HexowlInit(hx_print_func, OUTPUT_LEN);
+    HexowlInit(
+        hx_print_func, OUTPUT_LEN,
+        hx_clear_screen_func,
+        hx_flist_func,
+        hx_fopen_func,
+        hx_fclose_func,
+        hx_fwrite_func,
+        hx_fread_func);
     ESP_LOGI("calc", "hexowl task initialized");
 
     while (1)

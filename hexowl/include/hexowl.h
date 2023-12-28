@@ -84,13 +84,27 @@ typedef struct hexowl_calculate_return {
 	GoUint32 calcTime;	/* calcTime */
 } hexowl_calculate_return_t;
 
+typedef void (*hexowl_print_func_t)(GoString str);
+typedef void (*hexowl_clear_func_t)(void);
+typedef int (*hexowl_flist_func_t)(char *str);
+typedef int (*hexowl_fopen_func_t)(GoString name, GoString mode);
+typedef int (*hexowl_fclose_func_t)(void);
+typedef int (*hexowl_fwrite_func_t)(const void *data, size_t size);
+typedef int (*hexowl_fread_func_t)(void *data, size_t size);
+
 //go:noinline
 extern hexowl_calculate_return_t HexowlCalculate(const char *input);
 
-typedef void (*hexowl_print_func_t)(GoString str);
-
 //go:noinline
-extern void HexowlInit(hexowl_print_func_t printfunc, GoUint32 limit);
+extern void HexowlInit(
+	hexowl_print_func_t printfunc,
+	GoUint32 limit,
+	hexowl_clear_func_t clearfunc,
+	hexowl_flist_func_t listfunc,
+	hexowl_fopen_func_t openfunc,
+	hexowl_fclose_func_t closefunc,
+	hexowl_fwrite_func_t writefunc,
+	hexowl_fread_func_t readfunc);
 
 //go:noinline
 extern GoUint64 GetFreeMem();
