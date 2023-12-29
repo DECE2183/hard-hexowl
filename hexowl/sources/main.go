@@ -118,9 +118,28 @@ func toCslice(slc []byte) C._GoSlice_ {
 	return *(*C._GoSlice_)(unsafe.Pointer(&slc))
 }
 
+func removeAnsi(arr []byte) string {
+	retArr := make([]byte, 0, len(arr))
+	escDet := false
+	for _, c := range arr {
+		if c == '\u001B' {
+			escDet = true
+			continue
+		}
+		if escDet && c != 'm' {
+			continue
+		}
+		if escDet && c == 'm' {
+			escDet = false
+			continue
+		}
+		retArr = append(retArr, c)
+	}
+	return string(retArr)
+}
+
 func (w *displayWriter) Write(arr []byte) (n int, err error) {
 	if funcsDescriptor.printFunc == 0 || funcsDescriptor.printLimit == 0 {
-		fmt.Println("no print function")
 		return 0, fmt.Errorf("print function does not defined")
 	}
 
@@ -128,15 +147,16 @@ func (w *displayWriter) Write(arr []byte) (n int, err error) {
 
 	sizeLeft := len(arr)
 	for sizeLeft > funcsDescriptor.printLimit {
-		strToPrint = string(arr[n : n+funcsDescriptor.printLimit])
-		fmt.Printf("to stdout: %s\n", strToPrint)
+		// skip ASNI ESC color code
+		strToPrint = removeAnsi(arr[n : n+funcsDescriptor.printLimit])
+
 		C.ExtPrint(funcsDescriptor.printFunc, toCstr(strToPrint))
 		sizeLeft -= funcsDescriptor.printLimit
 		n += funcsDescriptor.printLimit
 	}
 
-	strToPrint = string(arr[n : n+sizeLeft])
-	fmt.Printf("to stdout: %s\n", strToPrint)
+	// skip ASNI ESC color code
+	strToPrint = removeAnsi(arr[n : n+sizeLeft])
 	C.ExtPrint(funcsDescriptor.printFunc, toCstr(strToPrint))
 
 	return n, nil

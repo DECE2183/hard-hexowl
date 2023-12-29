@@ -178,7 +178,7 @@ static void upload_task_handler(void *arg)
         updated_size += read_size;
         progress = (float)(updated_size) / (float)(total_size);
         xSemaphoreGive(ui_refresh_sem);
-        vTaskDelay(5);
+        vTaskDelay(1);
 
         read_size = sdcard_read(read_buff, read_buff_size);
         if (read_size <= 0)
