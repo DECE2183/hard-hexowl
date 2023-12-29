@@ -25,6 +25,7 @@ bool sdcard_is_mounted(void);
 sd_err_t sdcard_mount(void);
 sd_err_t sdcard_unmount(void);
 
+int sdcard_file_size(const char *fname);
 sd_err_t sdcard_open(const char *fname, const char *mode);
 sd_err_t sdcard_close(void);
 

@@ -19,6 +19,7 @@ sdmmc_card_t *sd_card = NULL;
 static const char sd_mount_point[] = SDCARD_MOUNT_POINT;
 static const char sd_env_dir[] = SDCARD_ENVIRONMENT_DIR;
 static FILE *file = NULL;
+static char file_path[BASE_PATH_LEN + SDCARD_MAX_FILE_NAME + 7] = {SDCARD_MOUNT_POINT SDCARD_ENVIRONMENT_DIR};
 
 bool sdcard_is_inserted(void)
 {
@@ -87,6 +88,33 @@ sd_err_t sdcard_unmount(void)
     return SD_OK;
 }
 
+int sdcard_file_size(const char *fname)
+{
+    struct stat st;
+
+    if (strlen(fname) > SDCARD_MAX_FILE_NAME)
+    {
+        ESP_LOGE("sdcard", "too long file name '%s'", fname);
+        return SD_LONG_NAME;
+    }
+
+    if (strchr(fname, '.') == NULL)
+    {
+        snprintf(file_path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s.json", fname);
+    }
+    else
+    {
+        snprintf(file_path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s", fname);
+    }
+
+    if (stat(file_path, &st) < 0)
+    {
+        return SD_NOT_EXISTS;
+    }
+
+    return st.st_size;
+}
+
 sd_err_t sdcard_open(const char *fname, const char *mode)
 {
     if (strlen(fname) > SDCARD_MAX_FILE_NAME)
@@ -95,21 +123,19 @@ sd_err_t sdcard_open(const char *fname, const char *mode)
         return SD_LONG_NAME;
     }
 
-    static char path[BASE_PATH_LEN + SDCARD_MAX_FILE_NAME + 7] = {SDCARD_MOUNT_POINT SDCARD_ENVIRONMENT_DIR};
-
     if (strchr(fname, '.') == NULL)
     {
-        snprintf(path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s.json", fname);
+        snprintf(file_path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s.json", fname);
     }
     else
     {
-        snprintf(path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s", fname);
+        snprintf(file_path + BASE_PATH_LEN, SDCARD_MAX_FILE_NAME, "/%s", fname);
     }
 
-    file = fopen(path, mode);
+    file = fopen(file_path, mode);
     if (file == NULL)
     {
-        ESP_LOGE("sdcard", "unable to open file: %s '%s'", path, mode);
+        ESP_LOGE("sdcard", "unable to open file: %s '%s'", file_path, mode);
         return SD_NOT_EXISTS;
     }
 
