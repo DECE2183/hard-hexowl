@@ -93,7 +93,7 @@ void ui_task(void *arg)
 
     while (1)
     {
-        if (xSemaphoreTake(ui_refresh_sem, 250))
+        if (xSemaphoreTake(ui_refresh_sem, portMAX_DELAY))
         {
             current_screen->draw();
             ssd1322_send_framebuffer(ui_display);

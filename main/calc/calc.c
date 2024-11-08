@@ -2,7 +2,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <esp_pm.h>
 #include <esp_log.h>
+#include <esp_private/esp_clk.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
@@ -13,6 +15,9 @@
 #define INPUT_LEN (1024)
 #define OUTPUT_LEN (4096)
 #define LOCK_TIMEOUT (2500)
+
+#define FREQ_HIGH (240)
+#define FREQ_LOW (80)
 
 extern void gorun(uintptr_t);
 
@@ -28,9 +33,26 @@ static char input_str[INPUT_LEN+1] = {0};
 static char output_str[OUTPUT_LEN+1] = {0};
 static char general_output_str[OUTPUT_LEN+1] = {0};
 
+static esp_pm_config_t pm_config = {
+    .max_freq_mhz = FREQ_LOW,
+    .min_freq_mhz = 10,
+    .light_sleep_enable = true,
+};
+
+static void set_cpu_freq(uint32_t freq)
+{
+    pm_config.max_freq_mhz = freq;
+    esp_pm_configure(&pm_config);
+    while (esp_clk_cpu_freq() / 1000000 != freq)
+    {
+        vTaskDelay(10);
+    }
+    ESP_LOGI("calc", "frequency is set to %luMHz", freq);
+}
+
 static void hx_print_func(GoString str)
 {
-    ESP_LOGI("calc", "output triggered");
+    ESP_LOGI("calc", "output triggered, len = %u", str.n);
 
     if (xSemaphoreTake(calc_out_done_sem, LOCK_TIMEOUT))
     {
@@ -190,8 +212,10 @@ void calc_task(void *arg)
 
     while (1)
     {
+        set_cpu_freq(FREQ_LOW);
         if (xSemaphoreTake(calc_begin_sem, portMAX_DELAY))
         {
+            set_cpu_freq(FREQ_HIGH);
             // calculate expression
             calc_begin();
             // inform about complete

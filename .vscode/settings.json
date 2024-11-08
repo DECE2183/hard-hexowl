@@ -2,13 +2,14 @@
     "idf.adapterTargetName": "esp32",
     "idf.espIdfPathWin": "${env:IDF_PATH}",
     "idf.flashType": "UART",
-    "idf.portWin": "COM6",
+    "idf.portWin": "COM5",
     "files.associations": {
         "cmath": "c",
         "complex": "c",
         "cstdlib": "c",
         "xlocnum": "c",
-        "charge_bmp.h": "c"
+        "charge_bmp.h": "c",
+        "esp_clk.h": "c"
     },
     "cmake.configureOnOpen": false
 }

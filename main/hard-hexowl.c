@@ -2,6 +2,7 @@
 
 #include <esp_log.h>
 #include <esp_ota_ops.h>
+#include <esp_private/esp_clk.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -17,7 +18,7 @@ StaticTask_t calc_static_task;
 StackType_t *calc_stack;
 
 // ui task stuff
-#define UI_STACK_SIZE 2048
+#define UI_STACK_SIZE (2048+256)
 const uintptr_t ui_stack_size = UI_STACK_SIZE;
 StackType_t ui_static_stack[UI_STACK_SIZE];
 StaticTask_t ui_static_task;
@@ -90,7 +91,7 @@ void app_main(void)
     if (ota_state == ESP_OTA_IMG_PENDING_VERIFY)
     {
         // TODO: implement secure firmware validation!!!
-        vTaskDelay(150);
+        vTaskDelay(350);
         esp_ota_mark_app_valid_cancel_rollback();
     }
 

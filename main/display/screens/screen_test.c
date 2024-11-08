@@ -1,7 +1,10 @@
 #include "screen.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
+#include <esp_private/esp_clk.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
@@ -31,17 +34,18 @@ typedef struct {
 
 static key_visual_t keyboard_layout[KEY_COUNT];
 static QueueHandle_t keyboard_queue;
+static TaskHandle_t cpu_freq_task;
 static void key_toggle_callback(kbrd_key_t k, kbrd_key_state_t s, bool pressed);
 static void create_keyboard_layout();
 static void draw_keyboard_layout();
 
+static char cpu_text_buffer[16];
 static char vbat_text_buffer[16];
 static char chrg_text_buffer[16];
-static char level_text_buffer[16];
 static void sensor_vbat_callback(sens_t sensor, float value);
 static void sensor_chrg_callback(sens_t sensor, float value);
-static void sensor_level_callback(sens_t sensor, float value);
 static void sensor_is_chrg_callback(sens_t sensor, float value);
+static void cpu_freq_display(void *arg);
 
 static bool init(void);
 static void open(void);
@@ -68,19 +72,26 @@ static void open(void)
     ssd1322_fill(ui_display, 0);
     draw_keyboard_layout();
 
-    ssd1322_draw_string(ui_display, 168, 4, "VBat:", cascadia_font);
+    esp_app_desc_t running_app_info;
+    const esp_partition_t *running_part = esp_ota_get_running_partition();
+    if (esp_ota_get_partition_description(running_part, &running_app_info) != ESP_OK)
+    {
+        strcpy(running_app_info.version, "err");
+    }
+
+    ssd1322_draw_string(ui_display, 168, 2, running_app_info.version, cascadia_font);
+    ssd1322_draw_string(ui_display, 168, 14, "CPU:", cascadia_font);
+
+    ssd1322_draw_string(ui_display, 168, 26, "VBat:", cascadia_font);
     sensor_vbat_callback(SENS_VBAT, sensors_get_value(SENS_VBAT));
-    ssd1322_draw_string(ui_display, 168, 20, "Chrg:", cascadia_font);
+    ssd1322_draw_string(ui_display, 168, 38, "Chrg:", cascadia_font);
     sensor_chrg_callback(SENS_CHRG, sensors_get_value(SENS_CHRG));
-    ssd1322_draw_string(ui_display, 168, 36, "LVL:", cascadia_font);
-    sensor_level_callback(SENS_BAT_LEVEL, sensors_get_value(SENS_BAT_LEVEL));
-    ssd1322_draw_string(ui_display, 168, 52, "IsCh:", cascadia_font);
+    ssd1322_draw_string(ui_display, 168, 50, "IsCh:", cascadia_font);
     sensor_is_chrg_callback(SENS_BAT_CHARGING, sensors_get_value(SENS_BAT_CHARGING));
 
     // register sensors callbacks
     sensors_register_callback(SENS_VBAT, sensor_vbat_callback);
     sensors_register_callback(SENS_CHRG, sensor_chrg_callback);
-    sensors_register_callback(SENS_BAT_LEVEL, sensor_level_callback);
     sensors_register_callback(SENS_BAT_CHARGING, sensor_is_chrg_callback);
 
     // register keyboard callbacks
@@ -88,6 +99,8 @@ static void open(void)
     {
         keyboard_register_callback(i, KEY_TOGGLED, key_toggle_callback);
     }
+
+    xTaskCreatePinnedToCore(cpu_freq_display, "cpu-freq", 4096, NULL, 0, &cpu_freq_task, 0);
 }
 
 static void draw(void)
@@ -118,6 +131,8 @@ static void close(void)
     {
         keyboard_register_callback(i, KEY_TOGGLED, NULL);
     }
+
+    vTaskDelete(cpu_freq_task);
 }
 
 static void key_toggle_callback(kbrd_key_t k, kbrd_key_state_t s, bool pressed)
@@ -220,38 +235,42 @@ static void draw_keyboard_layout()
     }
 }
 
+static void cpu_freq_display(void *arg)
+{
+    while(1)
+    {
+        sprintf(cpu_text_buffer, "%uMHz", esp_clk_cpu_freq()/1000000);
+        ssd1322_draw_rect_filled(ui_display, 210, 14, 40, 12, 0);
+        ssd1322_draw_string(ui_display, 210, 14, cpu_text_buffer, cascadia_font);
+        xSemaphoreGive(ui_refresh_sem);
+        vTaskDelay(1000);
+    }
+}
+
 static void sensor_vbat_callback(sens_t sensor, float value)
 {
     sprintf(vbat_text_buffer, "%.02f", value);
-    ssd1322_draw_rect_filled(ui_display, 216, 4, 40, 12, 0);
-    ssd1322_draw_string(ui_display, 216, 4, vbat_text_buffer, cascadia_font);
+    ssd1322_draw_rect_filled(ui_display, 210, 26, 40, 12, 0);
+    ssd1322_draw_string(ui_display, 210, 26, vbat_text_buffer, cascadia_font);
     xSemaphoreGive(ui_refresh_sem);
 }
 
 static void sensor_chrg_callback(sens_t sensor, float value)
 {
     sprintf(chrg_text_buffer, "%.02f", value);
-    ssd1322_draw_rect_filled(ui_display, 216, 20, 40, 12, 0);
-    ssd1322_draw_string(ui_display, 216, 20, chrg_text_buffer, cascadia_font);
-    xSemaphoreGive(ui_refresh_sem);
-}
-
-static void sensor_level_callback(sens_t sensor, float value)
-{
-    sprintf(level_text_buffer, "%.01f%%", value);
-    ssd1322_draw_rect_filled(ui_display, 216, 36, 40, 12, 0);
-    ssd1322_draw_string(ui_display, 216, 36, level_text_buffer, cascadia_font);
+    ssd1322_draw_rect_filled(ui_display, 210, 38, 40, 12, 0);
+    ssd1322_draw_string(ui_display, 210, 38, chrg_text_buffer, cascadia_font);
     xSemaphoreGive(ui_refresh_sem);
 }
 
 static void sensor_is_chrg_callback(sens_t sensor, float value)
 {
-    ssd1322_draw_rect_filled(ui_display, 216, 52, 40, 12, 0);
+    ssd1322_draw_rect_filled(ui_display, 210, 50, 40, 12, 0);
 
     if (value > 0)
-        ssd1322_draw_string(ui_display, 216, 52, "YES", cascadia_font);
+        ssd1322_draw_string(ui_display, 210, 50, "YES", cascadia_font);
     else
-        ssd1322_draw_string(ui_display, 216, 52, "NO", cascadia_font);
+        ssd1322_draw_string(ui_display, 210, 50, "NO", cascadia_font);
 
     xSemaphoreGive(ui_refresh_sem);
 }

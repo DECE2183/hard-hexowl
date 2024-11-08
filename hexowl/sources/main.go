@@ -13,14 +13,11 @@ import (
 )
 
 /*
-#include <stdlib.h>
 #include <stdint.h>
-#include <stdio.h>
 
-#include <string.h>
-
-typedef struct { const char *p; ptrdiff_t n; } _GoString_;
-typedef struct { void *data; long long int len; long long int cap; } _GoSlice_;
+typedef unsigned size_t;
+typedef struct { const char *p; size_t n; } _GoString_;
+typedef struct { void *data; size_t len; size_t cap; } _GoSlice_;
 
 typedef void (*print_func_t)(_GoString_ str);
 typedef void (*hexowl_clear_func_t)(void);
@@ -262,7 +259,11 @@ func clearOutput() {
 func envRead(name string) (io.ReadCloser, error) {
 	errCode := C.ExtOpenFile(funcsDescriptor.openFunc, toCstr(name), toCstr("r"))
 	if errCode < 0 {
-		return nil, errorMessages[int(errCode)]
+		err, ok := errorMessages[int(errCode)]
+		if !ok {
+			err = errorMessages[ERR_SD_NOT_INSERTED]
+		}
+		return nil, err
 	}
 
 	return &envReader{}, nil
@@ -271,7 +272,11 @@ func envRead(name string) (io.ReadCloser, error) {
 func envWrite(name string) (io.WriteCloser, error) {
 	errCode := C.ExtOpenFile(funcsDescriptor.openFunc, toCstr(name), toCstr("w"))
 	if errCode < 0 {
-		return nil, errorMessages[int(errCode)]
+		err, ok := errorMessages[int(errCode)]
+		if !ok {
+			err = errorMessages[ERR_SD_NOT_INSERTED]
+		}
+		return nil, err
 	}
 
 	return &envWriter{}, nil
@@ -299,6 +304,12 @@ func HexowlInit(printfunc uintptr, printlimit uint32, clearfunc, listfunc, openf
 	}
 
 	builtin.SystemInit(sysDesc)
+	builtin.RegisterConstant("gover", runtime.Version())
+	builtin.RegisterFunction("mem", builtin.Func{
+		Args: "",
+		Desc: "show free RAM",
+		Exec: displayFreeMem,
+	})
 }
 
 //export GetFreeMem
@@ -308,4 +319,8 @@ func GetFreeMem() uint64 {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 	return stats.Sys - stats.HeapInuse
+}
+
+func displayFreeMem(args ...interface{}) (interface{}, error) {
+	return GetFreeMem(), nil
 }

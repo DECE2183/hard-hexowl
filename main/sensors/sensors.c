@@ -9,7 +9,7 @@
 #include "filters/median.h"
 #include "filters/kalman.h"
 
-#define SENSORS_REFRESH_RATE 250
+#define SENSORS_REFRESH_RATE 1500
 #define SENSORS_CALI_SCHEME ESP_ADC_CAL_VAL_EFUSE_VREF
 #define SENSORS_VBAT_CH  ADC1_CHANNEL_7
 #define SENSORS_VBAT_ATT ADC_ATTEN_DB_11

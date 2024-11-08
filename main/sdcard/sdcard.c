@@ -41,6 +41,7 @@ sd_err_t sdcard_mount(void)
 
     esp_err_t err;
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    host.command_timeout_ms = 250;
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;

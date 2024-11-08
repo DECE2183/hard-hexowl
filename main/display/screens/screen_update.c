@@ -5,6 +5,7 @@
 
 #include <esp_log.h>
 #include <esp_ota_ops.h>
+#include <esp_app_format.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
@@ -73,7 +74,7 @@ static void close(void)
 
 static void upload_task_handler(void *arg)
 {
-    const size_t read_buff_size = 1024;
+    const size_t read_buff_size = 2048;
     uint8_t *read_buff = NULL;
     int total_size = 0;
     int read_size = 0;

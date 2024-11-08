@@ -10,14 +10,18 @@
 #define ROWS_CNT 8
 #define CLMN_CNT 8
 #define KEYBOARD_SCAN_RATE 5
-#define KEYBOARD_HOLD_COUNT 20
+#define KEYBOARD_HOLD_COUNT 15
+#define KEYBOARD_SLEEP_DELAY (KEYBOARD_SCAN_RATE * KEYBOARD_HOLD_COUNT * 10)
 
 typedef kbrd_callback_t kbrd_key_clbk_t[KEY_STATE_COUNT];
+
+static SemaphoreHandle_t extint_sem;
+static TickType_t kb_sleep_time;
 
 static pcf8575_t *gpio_expander;
 static const uint8_t address = 0x20;
 static const pcf8575_pinmap_t pinmap = {
-    .extint = -1,
+    .extint = 25,
 };
 
 static const i2c_port_t i2c_port = I2C_NUM_0;
@@ -95,6 +99,8 @@ static uint8_t keys[KEY_COUNT] = {0};
 static kbrd_key_clbk_t callbacks[KEY_COUNT] = {0};
 
 static void scan(void);
+static void wait_extint(void);
+static void extint_handler(pcf8575_t *expander);
 
 inline void keyboard_register_callback(kbrd_key_t key, kbrd_key_state_t state, kbrd_callback_t clbk)
 {
@@ -136,15 +142,50 @@ void keyboard_task(void *arg)
         ESP_LOGE("kbrd", "port expander initialization error");
         goto error;
     }
+    gpio_expander->extint_handler = extint_handler;
+
+    extint_sem = xSemaphoreCreateBinary();
+    if (extint_sem == NULL)
+    {
+        ESP_LOGE("kbrd", "semaphore creation failure");
+        goto error;
+    }
 
     while (1)
     {
         scan();
-        vTaskDelay(KEYBOARD_SCAN_RATE);
+        if (xTaskGetTickCount()  > kb_sleep_time)
+        {
+            ESP_LOGI("kbrd", "entering sleep mode");
+            wait_extint();
+        }
+        else
+        {
+            vTaskDelay(KEYBOARD_SCAN_RATE);
+        }
     }
 
 error:
     while (1) vTaskDelay(1000);
+}
+
+static void extint_handler(pcf8575_t *expander)
+{
+    static BaseType_t task_woken;
+    xSemaphoreGiveFromISR(extint_sem, &task_woken);
+    if (task_woken == pdTRUE)
+    {
+        portYIELD();
+    }
+}
+
+static void wait_extint(void)
+{
+    pcf8575_write(gpio_expander, 0xFF);
+    pcf8575_enable_extint(gpio_expander);
+    xSemaphoreTake(extint_sem, portMAX_DELAY);
+    pcf8575_disable_extint(gpio_expander);
+    ESP_LOGI("kbrd", "hit detected");
 }
 
 static void scan(void)
@@ -178,6 +219,8 @@ static void scan(void)
                     
                 if (callbacks[key][KEY_TOGGLED] != NULL)
                     callbacks[key][KEY_TOGGLED](key, KEY_TOGGLED, key_val);
+
+                kb_sleep_time = xTaskGetTickCount() + KEYBOARD_SLEEP_DELAY;
             }
             else if (keys[key] >= KEYBOARD_HOLD_COUNT)
             {
@@ -187,6 +230,7 @@ static void scan(void)
                     callbacks[key][KEY_UP](key, KEY_UP, key_val);
 
                 keys[key] = KEYBOARD_HOLD_COUNT;
+                kb_sleep_time = xTaskGetTickCount() + KEYBOARD_SLEEP_DELAY;
             }
 
             keys[key] = (keys[key] + 1) * key_val;
