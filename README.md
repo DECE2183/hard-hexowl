@@ -6,24 +6,23 @@ This is a hardware [hexowl](https://github.com/DECE2183/hexowl) calculator imple
 
 ### Software requirements:
 
- - ESP-IDF `v4.4`;
- - Go `v1.18` - `v1.19`;
- - tinygo `v0.26`.
+ - ESP-IDF `v5.1`;
+ - Go `v1.18` - `v1.21`;
+ - tinygo `v0.33`.
 
 ### Build steps:
 
- 1. Recursively clone this repo:
+ 1. Clone this repo and init submodules:
 
 ```bash
-git clone --recursive https://github.com/DECE2183/hard-hexowl.git
+git clone https://github.com/DECE2183/hard-hexowl.git
 ```
 
- 2. Copy the following resources from your existing `tinygo` installation to the same places in the local `tinygo` root folder `hexowl/tinygo`:
+```bash
+git submodule update --init
+```
 
- - Folder `lib/clang`;
- - File `src/device/esp/esp32.go`.
-
- 3. Build. Execute the following commands in the `ESP-IDF` environment:
+ 2. Build. Execute the following commands in the `ESP-IDF` environment:
 
  ```bash
  mkdir -p build && cd build
