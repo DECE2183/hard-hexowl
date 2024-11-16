@@ -16,6 +16,10 @@ message("Found tinygo at ${TINYGO_ROOT}")
 
 # copy tinygo executable to the local TINYGOROOT
 file(COPY "${TINYGO_ROOT}/bin" DESTINATION "${CMAKE_SOURCE_DIR}/hexowl/tinygo/")
+# copy tinygo clang library to the local TINYGOROOT
+file(COPY "${TINYGO_ROOT}/lib/clang" DESTINATION "${CMAKE_SOURCE_DIR}/hexowl/tinygo/lib")
+# copy tinygo ESP32 device description to the local TINYGOROOT
+file(COPY "${TINYGO_ROOT}/src/device/esp/esp32.go" DESTINATION "${CMAKE_SOURCE_DIR}/hexowl/tinygo/src/device/esp")
 
 # set TINYGOROOT and check
 set(TINYGO_ROOT "${CMAKE_SOURCE_DIR}/hexowl/tinygo")
