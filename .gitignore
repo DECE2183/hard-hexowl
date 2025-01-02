@@ -4,3 +4,4 @@ build/
 *.a
 *.old
 partition_table
+.vscode/settings.json

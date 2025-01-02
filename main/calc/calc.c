@@ -4,6 +4,7 @@
 #include <string.h>
 #include <esp_pm.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 #include <esp_private/esp_clk.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -29,6 +30,7 @@ SemaphoreHandle_t calc_out_done_sem;
 
 SemaphoreHandle_t calc_done_sem;
 
+static esp_pm_lock_handle_t pm_lock;
 static char input_str[INPUT_LEN+1] = {0};
 static char output_str[OUTPUT_LEN+1] = {0};
 static char general_output_str[OUTPUT_LEN+1] = {0};
@@ -43,11 +45,7 @@ static void set_cpu_freq(uint32_t freq)
 {
     pm_config.max_freq_mhz = freq;
     esp_pm_configure(&pm_config);
-    while (esp_clk_cpu_freq() / 1000000 != freq)
-    {
-        vTaskDelay(10);
-    }
-    ESP_LOGI("calc", "frequency is set to %luMHz", freq);
+    vTaskDelay(50);
 }
 
 static void hx_print_func(GoString str)
@@ -183,6 +181,8 @@ static void calc_begin(void)
 
 void calc_task(void *arg)
 {
+    calc_args_t *props = (calc_args_t *)arg;
+
     calc_begin_sem = xSemaphoreCreateBinary();
     calc_in_lock_mux = xSemaphoreCreateMutex();
     calc_out_sem = xSemaphoreCreateBinary();
@@ -195,30 +195,40 @@ void calc_task(void *arg)
         goto error;
     }
 
+    if (esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "calc", &pm_lock) != ESP_OK)
+    {
+        ESP_LOGE("calc", "pm lock creation error");
+        goto error;
+    }
+
     xSemaphoreGive(calc_out_done_sem);
 
-    uintptr_t go_heap_size = (uintptr_t)arg;
+    uintptr_t go_heap_size = (uintptr_t)props->heap_size;
     gorun(go_heap_size);
 
     HexowlInit(
-        hx_print_func, OUTPUT_LEN,
+        props->firmware_version,
+        OUTPUT_LEN,
+        hx_print_func,
         hx_clear_screen_func,
         hx_flist_func,
         hx_fopen_func,
         hx_fclose_func,
         hx_fwrite_func,
         hx_fread_func);
+
     ESP_LOGI("calc", "hexowl task initialized");
+    set_cpu_freq(FREQ_HIGH);
 
     while (1)
     {
-        set_cpu_freq(FREQ_LOW);
         if (xSemaphoreTake(calc_begin_sem, portMAX_DELAY))
         {
-            set_cpu_freq(FREQ_HIGH);
+            esp_pm_lock_acquire(pm_lock);
             // calculate expression
             calc_begin();
             // inform about complete
+            esp_pm_lock_release(pm_lock);
             xSemaphoreGive(calc_done_sem);
         }
     }

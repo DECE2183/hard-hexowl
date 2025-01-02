@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/builtin/types"
 	"github.com/dece2183/hexowl/operators"
 	"github.com/dece2183/hexowl/utils"
 )
@@ -284,7 +285,7 @@ func envWrite(name string) (io.WriteCloser, error) {
 
 //export HexowlInit
 //go:noinline
-func HexowlInit(printfunc uintptr, printlimit uint32, clearfunc, listfunc, openfunc, closefunc, writefunc, readfunc uintptr) {
+func HexowlInit(fmversion *C.char, printlimit uint32, printfunc, clearfunc, listfunc, openfunc, closefunc, writefunc, readfunc uintptr) {
 	fmt.Printf("print func addr: 0x%x\nlimit: %d\n", printfunc, printlimit)
 
 	funcsDescriptor.printFunc = printfunc
@@ -296,7 +297,7 @@ func HexowlInit(printfunc uintptr, printlimit uint32, clearfunc, listfunc, openf
 	funcsDescriptor.writeFunc = writefunc
 	funcsDescriptor.readFunc = readfunc
 
-	sysDesc := builtin.System{
+	sysDesc := types.System{
 		Stdout:           &stdOut,
 		ClearScreen:      clearOutput,
 		WriteEnvironment: envWrite,
@@ -305,7 +306,8 @@ func HexowlInit(printfunc uintptr, printlimit uint32, clearfunc, listfunc, openf
 
 	builtin.SystemInit(sysDesc)
 	builtin.RegisterConstant("gover", runtime.Version())
-	builtin.RegisterFunction("mem", builtin.Func{
+	builtin.RegisterConstant("fmver", C.GoString(fmversion))
+	builtin.RegisterFunction("mem", types.Func{
 		Args: "",
 		Desc: "show free RAM",
 		Exec: displayFreeMem,
@@ -321,6 +323,6 @@ func GetFreeMem() uint64 {
 	return stats.Sys - stats.HeapInuse
 }
 
-func displayFreeMem(args ...interface{}) (interface{}, error) {
+func displayFreeMem(desc *types.Descriptor, args ...interface{}) (interface{}, error) {
 	return GetFreeMem(), nil
 }

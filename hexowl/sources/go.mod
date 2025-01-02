@@ -1,5 +1,5 @@
 module hard-hexowl
 
-go 1.18
+go 1.21
 
-require github.com/dece2183/hexowl v1.4.2-0.20241003173927-7324b097ec00
+require github.com/dece2183/hexowl v1.5.1

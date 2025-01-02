@@ -156,7 +156,6 @@ void keyboard_task(void *arg)
         scan();
         if (xTaskGetTickCount()  > kb_sleep_time)
         {
-            ESP_LOGI("kbrd", "entering sleep mode");
             wait_extint();
         }
         else
@@ -185,7 +184,6 @@ static void wait_extint(void)
     pcf8575_enable_extint(gpio_expander);
     xSemaphoreTake(extint_sem, portMAX_DELAY);
     pcf8575_disable_extint(gpio_expander);
-    ESP_LOGI("kbrd", "hit detected");
 }
 
 static void scan(void)

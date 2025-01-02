@@ -64,6 +64,6 @@ include_directories("${CMAKE_SOURCE_DIR}/hexowl/include")
 link_directories(${HEXOWL_BINPATH})
 link_libraries(hexowl)
 
-set(PROJECT_VER "v1.0.0-22")
+set(PROJECT_VER "v1.0.0-28")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(hard-hexowl REQUIRES esp_pm esp_ipc)

@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <esp_log.h>
 #include <esp_ota_ops.h>
@@ -9,13 +11,16 @@
 #include <ui.h>
 #include <keyboard.h>
 #include <sensors.h>
+#include <calc.h>
 
 // calc task stuff
 extern void calc_task(void *arg);
-const uintptr_t calc_heap_size = 256 * 1024;
 const uintptr_t calc_task_stack_size = 2 * 1024 * 1024;
 StaticTask_t calc_static_task;
 StackType_t *calc_stack;
+static calc_args_t calc_task_args = {
+    .heap_size = 256 * 1024,
+};
 
 // ui task stuff
 #define UI_STACK_SIZE (2048+256)
@@ -49,9 +54,20 @@ void app_main(void)
         goto error;
     }
 
+    esp_app_desc_t *running_app_info = malloc(sizeof(esp_app_desc_t));
+    const esp_partition_t *running_part = esp_ota_get_running_partition();
+    if (esp_ota_get_partition_description(running_part, running_app_info) != ESP_OK)
+    {
+        strcpy(running_app_info->version, "unknown");
+    }
+
+    calc_task_args.firmware_version = malloc((strlen(running_app_info->version)+1)*sizeof(char));
+    strcpy(calc_task_args.firmware_version, running_app_info->version);
+    free(running_app_info);
+
     if (!xTaskCreateStaticPinnedToCore(
             calc_task, "calc",
-            calc_task_stack_size, (void *)calc_heap_size,
+            calc_task_stack_size, (void *)&calc_task_args,
             0, calc_stack, &calc_static_task, 1))
     {
         ESP_LOGE("main", "unable to run the calc task\r\n");

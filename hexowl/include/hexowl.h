@@ -59,8 +59,9 @@ extern hexowl_calculate_return_t HexowlCalculate(const char *input);
 
 //go:noinline
 extern void HexowlInit(
+	const char *firmware_version,
+	GoUint32 print_limit,
 	hexowl_print_func_t printfunc,
-	GoUint32 limit,
 	hexowl_clear_func_t clearfunc,
 	hexowl_flist_func_t listfunc,
 	hexowl_fopen_func_t openfunc,

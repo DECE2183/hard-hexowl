@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <esp_pm.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <esp_app_format.h>
@@ -25,6 +26,7 @@ extern ssd1322_t *ui_display;
 static bool done = false;
 static float progress = 0;
 static TaskHandle_t upload_task;
+static esp_pm_lock_handle_t pm_lock;
 
 static void upload_task_handler(void *arg);
 static void print_error(const char *msg);
@@ -43,11 +45,13 @@ const ui_screen_t update_screen = {
 
 static bool init(void)
 {
-    return true;
+    return esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "upd", &pm_lock) == ESP_OK;
 }
 
 static void open(void)
 {
+    esp_pm_lock_acquire(pm_lock);
+
     // clear screen and draw initial layout
     ssd1322_fill(ui_display, 0);
     ssd1322_draw_string(ui_display, 10, ui_display->res_y/2 - 20, "do not turn off the power!!!", cascadia_font);
@@ -69,7 +73,7 @@ static void draw(void)
 
 static void close(void)
 {
-
+    esp_pm_lock_release(pm_lock);
 }
 
 static void upload_task_handler(void *arg)
